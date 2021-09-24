@@ -83,7 +83,7 @@ static LEV_BUILDER: Lazy<HashMap<(u8, bool), LevenshteinAutomatonBuilder>> = Laz
 ///
 ///     {
 ///         let term = Term::from_field_text(title, "Diary");
-///         let query = FuzzyTermQuery::new(term, 1, true);
+///         let query = FuzzyTermQuery::new_prefix(term, 1);
 ///         let (top_docs, count) = searcher.search(&query, &(TopDocs::with_limit(2), Count)).unwrap();
 ///         assert_eq!(count, 2);
 ///         assert_eq!(top_docs.len(), 2);
@@ -181,14 +181,13 @@ mod test {
             ));
             index_writer.commit().unwrap();
         }
-        let searcher = index.searcher().unwrap();
 
         // passes because Levenshtein distance is 1 (substitute 'o' with 'a')
         {
             let term = Term::from_field_text(country_field, "japon");
 
             let fuzzy_query = FuzzyTermQuery::new_prefix(term, 1);
-            let top_docs = searcher
+            let top_docs = index.searcher().unwrap()
                 .search(&fuzzy_query, &TopDocs::with_limit(2))
                 .unwrap();
             assert_eq!(top_docs.len(), 1, "Expected only 1 document");
@@ -198,10 +197,10 @@ mod test {
 
         // fails because non-prefix Levenshtein distance is more than 1 (add 'a' and 'n')
         {
-            let term = Term::from_field_text(country_field, "jap");
+            let term = Term::from_field_text(country_field, "123");
 
             let fuzzy_query = FuzzyTermQuery::new_prefix(term, 1);
-            let top_docs = searcher
+            let top_docs = index.searcher().unwrap()
                 .search(&fuzzy_query, &TopDocs::with_limit(2))
                 .unwrap();
             assert_eq!(top_docs.len(), 0, "Expected no document");
@@ -212,7 +211,7 @@ mod test {
             let term = Term::from_field_text(country_field, "jap");
 
             let fuzzy_query = FuzzyTermQuery::new_prefix(term, 1);
-            let top_docs = searcher
+            let top_docs = index.searcher().unwrap()
                 .search(&fuzzy_query, &TopDocs::with_limit(2))
                 .unwrap();
             assert_eq!(top_docs.len(), 1, "Expected only 1 document");

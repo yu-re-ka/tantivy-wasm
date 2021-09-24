@@ -38,7 +38,7 @@ use crate::{Score, SegmentReader, TantivyError};
 /// index_writer.add_document(doc!(title => "The Diary of a Young Girl", price => 20_120u64));
 /// assert!(index_writer.commit().is_ok());
 ///
-/// let searcher = index.searcher()?;
+/// let searcher = index.searcher().unwrap();
 ///
 /// let query_parser = QueryParser::for_index(&index, vec![title]);
 /// let query = query_parser.parse_query("diary").unwrap();

@@ -56,6 +56,8 @@ pub struct IndexWriter {
 
     stamper: Stamper,
     committed_opstamp: Opstamp,
+
+    err: Mutex<Option<TantivyError>>,
 }
 
 fn compute_deleted_bitset(
@@ -239,6 +241,8 @@ impl IndexWriter {
 
             committed_opstamp: current_opstamp,
             stamper,
+
+            err: Mutex::new(None),
         };
         Ok(index_writer)
     }
@@ -382,6 +386,10 @@ impl IndexWriter {
     /// using this API.
     /// See [`PreparedCommit::set_payload()`](PreparedCommit.html)
     pub fn prepare_commit(&mut self) -> crate::Result<PreparedCommit> {
+        if let Some(e) = self.err.lock().unwrap().take() {
+            return Err(e);
+        }
+
         info!("Preparing commit");
         self.end_segment()?;
 
@@ -446,7 +454,9 @@ impl IndexWriter {
     /// document queue.
     pub fn add_document(&self, document: Document) -> Opstamp {
         let opstamp = self.stamper.stamp();
-        self.index_documents(smallvec![AddOperation { opstamp, document }]).unwrap();
+        if let Err(e) = self.index_documents(smallvec![AddOperation { opstamp, document }]) {
+            drop(self.err.lock().unwrap().insert(e));
+        }
         opstamp
     }
 
@@ -484,16 +494,19 @@ impl IndexWriter {
         }
 
         let mut seg = self.segment_and_writer.lock().unwrap();
-        let (ref segment, ref mut segment_writer, ref _delete_cursor) = seg.get_or_insert_with(|| {
+
+        if seg.is_none() {
             let mut delete_cursor = self.delete_queue.cursor();
             delete_cursor.skip_to(operations[0].opstamp);
 
             let segment = self.index.new_segment();
             let schema = segment.schema();
-            let segment_writer = SegmentWriter::for_segment(self.heap_size, segment.clone(), &schema).unwrap();
+            let segment_writer = SegmentWriter::for_segment(self.heap_size, segment.clone(), &schema)?;
 
-            (segment, segment_writer, delete_cursor)
-        });
+            drop(seg.insert((segment, segment_writer, delete_cursor)));
+        }
+
+        let (ref segment, ref mut segment_writer, ref _delete_cursor) = seg.as_mut().unwrap();
         let schema = segment.schema().clone();
 
         for operation in operations {

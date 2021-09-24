@@ -124,7 +124,7 @@ impl<TFruit: Fruit> FruitHandle<TFruit> {
 /// index_writer.add_document(doc!(title => "The Diary of a Young Girl"));
 /// assert!(index_writer.commit().is_ok());
 ///
-/// let searcher = index.searcher()?;
+/// let searcher = index.searcher().unwrap();
 ///
 /// let mut collectors = MultiCollector::new();
 /// let top_docs_handle = collectors.add_collector(TopDocs::with_limit(2));

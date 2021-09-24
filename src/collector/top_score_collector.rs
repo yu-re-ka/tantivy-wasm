@@ -106,7 +106,7 @@ where
 /// index_writer.add_document(doc!(title => "The Diary of a Young Girl"));
 /// assert!(index_writer.commit().is_ok());
 ///
-/// let searcher = index.searcher()?;
+/// let searcher = index.searcher().unwrap();
 ///
 /// let query_parser = QueryParser::for_index(&index, vec![title]);
 /// let query = query_parser.parse_query("diary").unwrap();
@@ -192,7 +192,7 @@ impl TopDocs {
     /// index_writer.add_document(doc!(title => "The Diary of Lena Mukhina"));
     /// assert!(index_writer.commit().is_ok());
     ///
-    /// let searcher = index.searcher()?;
+    /// let searcher = index.searcher().unwrap();
     ///
     /// let query_parser = QueryParser::for_index(&index, vec![title]);
     /// let query = query_parser.parse_query("diary").unwrap();
@@ -453,7 +453,7 @@ impl TopDocs {
     ///                 popularity_boost_score * original_score
     ///             }
     ///           });
-    /// let searcher = index.searcher()?;
+    /// let searcher = index.searcher().unwrap();
     /// // ... and here are our documents. Note this is a simple vec.
     /// // The `Score` in the pair is our tweaked score.
     /// let resulting_docs: Vec<(Score, DocAddress)> =
