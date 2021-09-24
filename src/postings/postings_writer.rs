@@ -18,7 +18,7 @@ use std::io;
 use std::marker::PhantomData;
 use std::ops::{DerefMut, Range};
 
-fn posting_from_field_entry(field_entry: &FieldEntry) -> Box<dyn PostingsWriter> {
+fn posting_from_field_entry(field_entry: &FieldEntry) -> Box<dyn PostingsWriter + Sync + Send> {
     match *field_entry.field_type() {
         FieldType::Str(ref text_options) => text_options
             .get_indexing_options()
@@ -49,7 +49,7 @@ pub struct MultiFieldPostingsWriter {
     heap: MemoryArena,
     schema: Schema,
     term_index: TermHashMap,
-    per_field_postings_writers: Vec<Box<dyn PostingsWriter>>,
+    per_field_postings_writers: Vec<Box<dyn PostingsWriter + Sync + Send>>,
 }
 
 fn make_field_partition(
@@ -92,6 +92,10 @@ impl MultiFieldPostingsWriter {
             term_index,
             per_field_postings_writers,
         }
+    }
+
+    pub fn mem_usage(&self) -> usize {
+        self.term_index.mem_usage() + self.heap.mem_usage()
     }
 
     pub fn index_text(
@@ -245,12 +249,12 @@ pub trait PostingsWriter {
 
 /// The `SpecializedPostingsWriter` is just here to remove dynamic
 /// dispatch to the recorder information.
-pub(crate) struct SpecializedPostingsWriter<Rec: Recorder + 'static> {
+pub(crate) struct SpecializedPostingsWriter<Rec: Recorder + Send + Sync + 'static> {
     total_num_tokens: u64,
     _recorder_type: PhantomData<Rec>,
 }
 
-impl<Rec: Recorder + 'static> SpecializedPostingsWriter<Rec> {
+impl<Rec: Recorder + Send + Sync + 'static> SpecializedPostingsWriter<Rec> {
     /// constructor
     pub fn new() -> SpecializedPostingsWriter<Rec> {
         SpecializedPostingsWriter {
@@ -260,12 +264,12 @@ impl<Rec: Recorder + 'static> SpecializedPostingsWriter<Rec> {
     }
 
     /// Builds a `SpecializedPostingsWriter` storing its data in a heap.
-    pub fn new_boxed() -> Box<dyn PostingsWriter> {
+    pub fn new_boxed() -> Box<dyn PostingsWriter + Sync + Send> {
         Box::new(SpecializedPostingsWriter::<Rec>::new())
     }
 }
 
-impl<Rec: Recorder + 'static> PostingsWriter for SpecializedPostingsWriter<Rec> {
+impl<Rec: Recorder + Send + Sync + 'static> PostingsWriter for SpecializedPostingsWriter<Rec> {
     fn subscribe(
         &mut self,
         term_index: &mut TermHashMap,

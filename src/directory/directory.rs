@@ -10,7 +10,7 @@ use std::marker::Send;
 use std::marker::Sync;
 use std::path::Path;
 use std::path::PathBuf;
-use std::thread;
+//use std::thread;
 use std::time::Duration;
 
 /// Retry the logic of acquiring locks is pretty simple.
@@ -34,8 +34,8 @@ impl RetryPolicy {
             false
         } else {
             self.num_retries -= 1;
-            let wait_duration = Duration::from_millis(self.wait_in_ms);
-            thread::sleep(wait_duration);
+            //let wait_duration = Duration::from_millis(self.wait_in_ms);
+            //thread::sleep(wait_duration);
             true
         }
     }

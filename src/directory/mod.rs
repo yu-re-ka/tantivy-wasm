@@ -49,7 +49,7 @@ pub use self::managed_directory::ManagedDirectory;
 ///
 /// `WritePtr` are required to implement both Write
 /// and Seek.
-pub type WritePtr = BufWriter<Box<dyn TerminatingWrite>>;
+pub type WritePtr = BufWriter<Box<dyn TerminatingWrite + Sync + Send>>;
 
 #[cfg(test)]
 mod tests;

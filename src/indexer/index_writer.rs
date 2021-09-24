@@ -29,6 +29,7 @@ use smallvec::smallvec;
 use smallvec::SmallVec;
 use std::ops::Range;
 use std::sync::Arc;
+use std::sync::Mutex;
 
 // We impose the memory per thread to be at least 3 MB.
 pub const HEAP_SIZE_MIN: usize = (1_000_000 * 3u32) as usize;
@@ -47,6 +48,7 @@ pub struct IndexWriter {
     index: Index,
 
     segment_updater: SegmentUpdater,
+    segment_and_writer: Mutex<Option<(Segment, SegmentWriter, DeleteCursor)>>,
 
     heap_size: usize,
 
@@ -229,6 +231,7 @@ impl IndexWriter {
             index: index.clone(),
 
             segment_updater,
+            segment_and_writer: Mutex::new(None),
 
             delete_queue,
 
@@ -380,6 +383,7 @@ impl IndexWriter {
     /// See [`PreparedCommit::set_payload()`](PreparedCommit.html)
     pub fn prepare_commit(&mut self) -> crate::Result<PreparedCommit> {
         info!("Preparing commit");
+        self.end_segment()?;
 
         let commit_opstamp = self.stamper.stamp();
         let prepared_commit = PreparedCommit::new(self, commit_opstamp);
@@ -446,27 +450,15 @@ impl IndexWriter {
         opstamp
     }
 
-    /// Performs add operations
-    fn index_documents(&self, documents: SmallVec<[AddOperation; 4]>) -> crate::Result<()> {
-        debug!("{:?}", documents);
-        if documents.len() < 1 {
-            return Ok(());
-        }
-        let mut delete_cursor = self.delete_queue.cursor();
-        delete_cursor.skip_to(documents[0].opstamp);
-        let segment = self.index.new_segment();
-
-        let schema = segment.schema();
-
-        let mut segment_writer = SegmentWriter::for_segment(self.heap_size, segment.clone(), &schema)?;
-        for doc in documents {
-            segment_writer.add_document(doc, &schema)?;
-        }
+    fn end_segment(&self) -> crate::Result<()> {
+        let (segment, segment_writer, mut delete_cursor) = match self.segment_and_writer.lock().unwrap().take() {
+            Some(v) => v,
+            None => return Ok(()),
+        };
 
         let max_doc = segment_writer.max_doc();
 
-        // this is ensured by the call to peek before starting
-        // the worker thread.
+        // We only start a new segment if we have a document, but let's be sure
         assert!(max_doc > 0);
 
         let doc_opstamps: Vec<Opstamp> = segment_writer.finalize()?;
@@ -481,6 +473,37 @@ impl IndexWriter {
         // update segment_updater inventory to remove tempstore
         let segment_entry = SegmentEntry::new(meta, delete_cursor, delete_bitset_opt);
         self.segment_updater.add_segment(segment_entry)?;
+
+        Ok(())
+    }
+
+    /// Process a group of add operations
+    fn index_documents(&self, operations: SmallVec<[AddOperation; 4]>) -> crate::Result<()> {
+        if operations.len() < 1 {
+            return Ok(());
+        }
+
+        let mut seg = self.segment_and_writer.lock().unwrap();
+        let (ref segment, ref mut segment_writer, ref delete_cursor) = seg.get_or_insert_with(|| {
+            let mut delete_cursor = self.delete_queue.cursor();
+            delete_cursor.skip_to(operations[0].opstamp);
+
+            let segment = self.index.new_segment();
+            let schema = segment.schema();
+            let segment_writer = SegmentWriter::for_segment(self.heap_size, segment.clone(), &schema).unwrap();
+
+            (segment, segment_writer, delete_cursor)
+        });
+        let schema = segment.schema().clone();
+
+        for operation in operations {
+            segment_writer.add_document(operation, &schema)?;
+        }
+
+        if segment_writer.mem_usage() > self.heap_size {
+            drop(seg);
+            self.end_segment()?;
+        }
 
         Ok(())
     }
@@ -1185,6 +1208,7 @@ mod tests {
             }
         }
         index_writer.commit()?;
+        drop(index_writer);
 
         let searcher = index.searcher()?;
         if force_end_merge {

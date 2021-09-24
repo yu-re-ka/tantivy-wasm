@@ -101,6 +101,15 @@ impl MemoryArena {
         &mut self.pages[new_page_id]
     }
 
+    /// Returns an estimate in number of bytes
+    /// of resident memory consumed by the `MemoryArena`.
+    ///
+    /// Internally, it counts a number of `1MB` pages
+    /// and therefore delivers an upperbound.
+    pub fn mem_usage(&self) -> usize {
+        self.pages.len() * PAGE_SIZE
+    }
+
     pub fn write_at<Item: Copy + 'static>(&mut self, addr: Addr, val: Item) {
         let dest = self.slice_mut(addr, std::mem::size_of::<Item>());
         store(dest, val);
