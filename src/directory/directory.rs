@@ -11,21 +11,21 @@ use std::marker::Sync;
 use std::path::Path;
 use std::path::PathBuf;
 //use std::thread;
-use std::time::Duration;
+//use std::time::Duration;
 
 /// Retry the logic of acquiring locks is pretty simple.
 /// We just retry `n` times after a given `duratio`, both
 /// depending on the type of lock.
 struct RetryPolicy {
     num_retries: usize,
-    wait_in_ms: u64,
+//    wait_in_ms: u64,
 }
 
 impl RetryPolicy {
     fn no_retry() -> RetryPolicy {
         RetryPolicy {
             num_retries: 0,
-            wait_in_ms: 0,
+//            wait_in_ms: 0,
         }
     }
 
@@ -91,7 +91,7 @@ fn retry_policy(is_blocking: bool) -> RetryPolicy {
     if is_blocking {
         RetryPolicy {
             num_retries: 100,
-            wait_in_ms: 100,
+//            wait_in_ms: 100,
         }
     } else {
         RetryPolicy::no_retry()

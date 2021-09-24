@@ -484,7 +484,7 @@ impl IndexWriter {
         }
 
         let mut seg = self.segment_and_writer.lock().unwrap();
-        let (ref segment, ref mut segment_writer, ref delete_cursor) = seg.get_or_insert_with(|| {
+        let (ref segment, ref mut segment_writer, ref _delete_cursor) = seg.get_or_insert_with(|| {
             let mut delete_cursor = self.delete_queue.cursor();
             delete_cursor.skip_to(operations[0].opstamp);
 
