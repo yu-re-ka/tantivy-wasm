@@ -2,7 +2,6 @@ use crate::error::TantivyError;
 use crate::query::{AutomatonWeight, Query, Weight};
 use crate::schema::Field;
 use crate::Searcher;
-use std::clone::Clone;
 use std::sync::Arc;
 use tantivy_fst::Regex;
 
@@ -41,8 +40,7 @@ use tantivy_fst::Regex;
 ///     index_writer.commit().unwrap();
 /// }
 ///
-/// let reader = index.reader()?;
-/// let searcher = reader.searcher();
+/// let searcher = index.searcher()?;
 ///
 /// let term = Term::from_field_text(title, "Diary");
 /// let query = RegexQuery::from_pattern("d[ai]{2}ry", title)?;
@@ -96,11 +94,11 @@ mod test {
     use crate::collector::TopDocs;
     use crate::schema::TEXT;
     use crate::schema::{Field, Schema};
-    use crate::{Index, IndexReader};
+    use crate::{Index, Searcher};
     use std::sync::Arc;
     use tantivy_fst::Regex;
 
-    fn build_test_index() -> (IndexReader, Field) {
+    fn build_test_index() -> (Searcher, Field) {
         let mut schema_builder = Schema::builder();
         let country_field = schema_builder.add_text_field("country", TEXT);
         let schema = schema_builder.build();
@@ -115,17 +113,16 @@ mod test {
             ));
             index_writer.commit().unwrap();
         }
-        let reader = index.reader().unwrap();
+        let searcher = index.searcher().unwrap();
 
-        (reader, country_field)
+        (searcher, country_field)
     }
 
     fn verify_regex_query(
         query_matching_one: RegexQuery,
         query_matching_zero: RegexQuery,
-        reader: IndexReader,
+        searcher: &Searcher,
     ) {
-        let searcher = reader.searcher();
         {
             let scored_docs = searcher
                 .search(&query_matching_one, &TopDocs::with_limit(2))
@@ -142,22 +139,22 @@ mod test {
 
     #[test]
     pub fn test_regex_query() {
-        let (reader, field) = build_test_index();
+        let (searcher, field) = build_test_index();
 
         let matching_one = RegexQuery::from_pattern("jap[ao]n", field).unwrap();
         let matching_zero = RegexQuery::from_pattern("jap[A-Z]n", field).unwrap();
 
-        verify_regex_query(matching_one, matching_zero, reader);
+        verify_regex_query(matching_one, matching_zero, &searcher);
     }
 
     #[test]
     pub fn test_construct_from_regex() {
-        let (reader, field) = build_test_index();
+        let (searcher, field) = build_test_index();
 
         let matching_one = RegexQuery::from_regex(Regex::new("jap[ao]n").unwrap(), field);
         let matching_zero = RegexQuery::from_regex(Regex::new("jap[A-Z]n").unwrap(), field);
 
-        verify_regex_query(matching_one, matching_zero, reader);
+        verify_regex_query(matching_one, matching_zero, &searcher);
     }
 
     #[test]
@@ -165,16 +162,16 @@ mod test {
         let r1 = Arc::new(Regex::new("jap[ao]n").unwrap());
         let r2 = Arc::new(Regex::new("jap[A-Z]n").unwrap());
 
-        let (reader, field) = build_test_index();
+        let (searcher, field) = build_test_index();
 
         let matching_one = RegexQuery::from_regex(r1.clone(), field);
         let matching_zero = RegexQuery::from_regex(r2.clone(), field);
 
-        verify_regex_query(matching_one, matching_zero, reader.clone());
+        verify_regex_query(matching_one, matching_zero, &searcher);
 
         let matching_one = RegexQuery::from_regex(r1, field);
         let matching_zero = RegexQuery::from_regex(r2, field);
 
-        verify_regex_query(matching_one, matching_zero, reader);
+        verify_regex_query(matching_one, matching_zero, &searcher);
     }
 }

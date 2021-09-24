@@ -45,7 +45,7 @@ pub mod tests {
         ]);
         let schema = index.schema();
         let text_field = schema.get_field("text").unwrap();
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         let test_query = |texts: Vec<&str>| {
             let terms: Vec<Term> = texts
                 .iter()
@@ -72,7 +72,7 @@ pub mod tests {
     pub fn test_phrase_query_simple() -> crate::Result<()> {
         let index = create_index(&["a b b d c g c", "a b a b c"]);
         let text_field = index.schema().get_field("text").unwrap();
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         let terms: Vec<Term> = vec!["a", "b", "c"]
             .iter()
             .map(|text| Term::from_field_text(text_field, text))
@@ -96,7 +96,7 @@ pub mod tests {
         ]);
         let schema = index.schema();
         let text_field = schema.get_field("text").unwrap();
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         let test_query = |texts: Vec<&str>| {
             let terms: Vec<Term> = texts
                 .iter()
@@ -139,7 +139,7 @@ pub mod tests {
             index_writer.add_document(doc!(text_field=>"a b c"));
             assert!(index_writer.commit().is_ok());
         }
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         let phrase_query = PhraseQuery::new(vec![
             Term::from_field_text(text_field, "a"),
             Term::from_field_text(text_field, "b"),
@@ -161,7 +161,7 @@ pub mod tests {
         let index = create_index(&["a b c", "a b c a b"]);
         let schema = index.schema();
         let text_field = schema.get_field("text").unwrap();
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         let test_query = |texts: Vec<&str>| {
             let terms: Vec<Term> = texts
                 .iter()
@@ -193,7 +193,7 @@ pub mod tests {
             assert!(index_writer.commit().is_ok());
         }
 
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         let test_query = |texts: Vec<&str>| {
             let terms: Vec<Term> = texts
                 .iter()
@@ -221,7 +221,7 @@ pub mod tests {
             index_writer.add_document(doc!(text_field=>"a b c d e f g h"));
             assert!(index_writer.commit().is_ok());
         }
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         let test_query = |texts: Vec<(usize, &str)>| {
             let terms: Vec<(usize, Term)> = texts
                 .iter()

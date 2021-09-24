@@ -1,5 +1,4 @@
 use super::{segment::Segment, IndexSettings};
-use crate::core::Executor;
 use crate::core::IndexMeta;
 use crate::core::SegmentId;
 use crate::core::SegmentMeta;
@@ -10,25 +9,24 @@ use crate::directory::ManagedDirectory;
 #[cfg(feature = "mmap")]
 use crate::directory::MmapDirectory;
 use crate::directory::INDEX_WRITER_LOCK;
+use crate::directory::META_LOCK;
 use crate::directory::{Directory, RamDirectory};
 use crate::error::DataCorruption;
 use crate::error::TantivyError;
-use crate::indexer::index_writer::{HEAP_SIZE_MIN, MAX_NUM_THREAD};
 use crate::indexer::segment_updater::save_new_metas;
-use crate::reader::IndexReader;
-use crate::reader::IndexReaderBuilder;
 use crate::schema::Field;
 use crate::schema::FieldType;
 use crate::schema::Schema;
 use crate::tokenizer::{TextAnalyzer, TokenizerManager};
 use crate::IndexWriter;
+use crate::SegmentReader;
+use crate::Searcher;
 use std::collections::HashSet;
 use std::fmt;
 
 #[cfg(feature = "mmap")]
 use std::path::Path;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 fn load_metas(
     directory: &dyn Directory,
@@ -185,7 +183,6 @@ pub struct Index {
     directory: ManagedDirectory,
     schema: Schema,
     settings: IndexSettings,
-    executor: Arc<Executor>,
     tokenizers: TokenizerManager,
     inventory: SegmentMetaInventory,
 }
@@ -200,30 +197,6 @@ impl Index {
     /// Effectively, it only checks for the presence of the `meta.json` file.
     pub fn exists<Dir: Directory>(dir: &Dir) -> Result<bool, OpenReadError> {
         dir.exists(&META_FILEPATH)
-    }
-
-    /// Accessor to the search executor.
-    ///
-    /// This pool is used by default when calling `searcher.search(...)`
-    /// to perform search on the individual segments.
-    ///
-    /// By default the executor is single thread, and simply runs in the calling thread.
-    pub fn search_executor(&self) -> &Executor {
-        self.executor.as_ref()
-    }
-
-    /// Replace the default single thread search executor pool
-    /// by a thread pool with a given number of threads.
-    pub fn set_multithread_executor(&mut self, num_threads: usize) -> crate::Result<()> {
-        self.executor = Arc::new(Executor::multi_thread(num_threads, "thrd-tantivy-search-")?);
-        Ok(())
-    }
-
-    /// Replace the default single thread search executor pool
-    /// by a thread pool with a given number of threads.
-    pub fn set_default_multithread_executor(&mut self) -> crate::Result<()> {
-        let default_num_threads = num_cpus::get();
-        self.set_multithread_executor(default_num_threads)
     }
 
     /// Creates a new index using the `RamDirectory`.
@@ -292,7 +265,6 @@ impl Index {
             directory,
             schema,
             tokenizers: TokenizerManager::default(),
-            executor: Arc::new(Executor::single_thread()),
             inventory,
         }
     }
@@ -323,20 +295,17 @@ impl Index {
         }
     }
 
-    /// Create a default `IndexReader` for the given index.
-    ///
-    /// See [`Index.reader_builder()`](#method.reader_builder).
-    pub fn reader(&self) -> crate::Result<IndexReader> {
-        self.reader_builder().try_into()
-    }
-
-    /// Create a `IndexReader` for the given index.
-    ///
-    /// Most project should create at most one reader for a given index.
-    /// This method is typically called only once per `Index` instance,
-    /// over the lifetime of most problem.
-    pub fn reader_builder(&self) -> IndexReaderBuilder {
-        IndexReaderBuilder::new(self.clone())
+    /// Get a seracher
+    pub fn searcher(&self) -> crate::Result<Searcher> {
+        let segment_readers: Vec<SegmentReader> = {
+            let _meta_lock = self.directory().acquire_lock(&META_LOCK)?;
+            let searchable_segments = self.searchable_segments()?;
+            searchable_segments
+                .iter()
+                .map(SegmentReader::open)
+                .collect::<crate::Result<_>>()?
+        };
+        Ok(Searcher::new(self.schema(), self.clone(), segment_readers)?)
     }
 
     /// Opens a new directory from an index path.
@@ -386,22 +355,16 @@ impl Index {
     /// `IndexWriter` on the system is accessing the index directory,
     /// it is safe to manually delete the lockfile.
     ///
-    /// - `num_threads` defines the number of indexing workers that
-    /// should work at the same time.
-    ///
-    /// - `overall_heap_size_in_bytes` sets the amount of memory
-    /// allocated for all indexing thread.
-    /// Each thread will receive a budget of  `overall_heap_size_in_bytes / num_threads`.
+    /// - `heap_size_in_bytes` sets the amount of memory allocated
     ///
     /// # Errors
     /// If the lockfile already exists, returns `Error::DirectoryLockBusy` or an `Error::IoError`.
     ///
     /// # Panics
     /// If the heap size per thread is too small, panics.
-    pub fn writer_with_num_threads(
+    pub fn writer(
         &self,
-        num_threads: usize,
-        overall_heap_size_in_bytes: usize,
+        heap_size_in_bytes: usize,
     ) -> crate::Result<IndexWriter> {
         let directory_lock = self
             .directory
@@ -418,11 +381,9 @@ impl Index {
                     ),
                 )
             })?;
-        let heap_size_in_bytes_per_thread = overall_heap_size_in_bytes / num_threads;
         IndexWriter::new(
             self,
-            num_threads,
-            heap_size_in_bytes_per_thread,
+            heap_size_in_bytes,
             directory_lock,
         )
     }
@@ -433,27 +394,7 @@ impl Index {
     /// Using a single thread gives us a deterministic allocation of DocId.
     #[cfg(test)]
     pub fn writer_for_tests(&self) -> crate::Result<IndexWriter> {
-        self.writer_with_num_threads(1, 10_000_000)
-    }
-
-    /// Creates a multithreaded writer
-    ///
-    /// Tantivy will automatically define the number of threads to use, but
-    /// no more than [`MAX_NUM_THREAD`] threads.
-    /// `overall_heap_size_in_bytes` is the total target memory usage that will be split
-    /// between a given number of threads.
-    ///
-    /// # Errors
-    /// If the lockfile already exists, returns `Error::FileAlreadyExists`.
-    /// # Panics
-    /// If the heap size per thread is too small, panics.
-    pub fn writer(&self, overall_heap_size_in_bytes: usize) -> crate::Result<IndexWriter> {
-        let mut num_threads = std::cmp::min(num_cpus::get(), MAX_NUM_THREAD);
-        let heap_size_in_bytes_per_thread = overall_heap_size_in_bytes / num_threads;
-        if heap_size_in_bytes_per_thread < HEAP_SIZE_MIN {
-            num_threads = (overall_heap_size_in_bytes / HEAP_SIZE_MIN).max(1);
-        }
-        self.writer_with_num_threads(num_threads, overall_heap_size_in_bytes)
+        self.writer(10_000_000)
     }
 
     /// Accessor to the index settings
@@ -553,13 +494,11 @@ impl fmt::Debug for Index {
 mod tests {
     use crate::schema::Field;
     use crate::schema::{Schema, INDEXED, TEXT};
-    use crate::IndexReader;
-    use crate::ReloadPolicy;
     use crate::{
-        directory::{RamDirectory, WatchCallback},
+        directory::RamDirectory,
         IndexSettings,
     };
-    use crate::{Directory, Index};
+    use crate::Index;
 
     #[test]
     fn test_indexer_for_field() {
@@ -656,13 +595,8 @@ mod tests {
         let schema = throw_away_schema();
         let field = schema.get_field("num_likes").unwrap();
         let index = Index::create_in_ram(schema);
-        let reader = index
-            .reader_builder()
-            .reload_policy(ReloadPolicy::OnCommit)
-            .try_into()
-            .unwrap();
-        assert_eq!(reader.searcher().num_docs(), 0);
-        test_index_on_commit_reload_policy_aux(field, &index, &reader);
+        assert_eq!(index.searcher().unwrap().num_docs(), 0);
+        test_index_on_commit_reload_policy_aux(field, &index);
     }
 
     #[cfg(feature = "mmap")]
@@ -680,13 +614,8 @@ mod tests {
             let tempdir = TempDir::new().unwrap();
             let tempdir_path = PathBuf::from(tempdir.path());
             let index = Index::create_in_dir(&tempdir_path, schema).unwrap();
-            let reader = index
-                .reader_builder()
-                .reload_policy(ReloadPolicy::OnCommit)
-                .try_into()
-                .unwrap();
-            assert_eq!(reader.searcher().num_docs(), 0);
-            test_index_on_commit_reload_policy_aux(field, &index, &reader);
+            assert_eq!(index.searcher().unwrap().num_docs(), 0);
+            test_index_on_commit_reload_policy_aux(field, &index);
         }
 
         #[test]
@@ -696,21 +625,11 @@ mod tests {
             let mut index = Index::create_from_tempdir(schema)?;
             let mut writer = index.writer_for_tests()?;
             writer.commit()?;
-            let reader = index
-                .reader_builder()
-                .reload_policy(ReloadPolicy::Manual)
-                .try_into()?;
-            assert_eq!(reader.searcher().num_docs(), 0);
+            assert_eq!(index.searcher().num_docs(), 0);
             writer.add_document(doc!(field=>1u64));
-            let (sender, receiver) = crossbeam::channel::unbounded();
-            let _handle = index.directory_mut().watch(WatchCallback::new(move || {
-                let _ = sender.send(());
-            }));
             writer.commit()?;
-            assert!(receiver.recv().is_ok());
-            assert_eq!(reader.searcher().num_docs(), 0);
-            reader.reload()?;
-            assert_eq!(reader.searcher().num_docs(), 1);
+            assert_eq!(index.searcher()?.num_docs(), 0);
+            assert_eq!(index.searcher()?.num_docs(), 1);
             Ok(())
         }
 
@@ -722,49 +641,24 @@ mod tests {
             let tempdir_path = PathBuf::from(tempdir.path());
             let write_index = Index::create_in_dir(&tempdir_path, schema).unwrap();
             let read_index = Index::open_in_dir(&tempdir_path).unwrap();
-            let reader = read_index
-                .reader_builder()
-                .reload_policy(ReloadPolicy::OnCommit)
-                .try_into()
-                .unwrap();
-            assert_eq!(reader.searcher().num_docs(), 0);
-            test_index_on_commit_reload_policy_aux(field, &write_index, &reader);
+            assert_eq!(index.searcher().unwrap().num_docs(), 0);
+            test_index_on_commit_reload_policy_aux(field, &write_index);
         }
     }
-    fn test_index_on_commit_reload_policy_aux(field: Field, index: &Index, reader: &IndexReader) {
-        let mut reader_index = reader.index();
-        let (sender, receiver) = crossbeam::channel::unbounded();
-        let _watch_handle = reader_index
-            .directory_mut()
-            .watch(WatchCallback::new(move || {
-                let _ = sender.send(());
-            }));
+    fn test_index_on_commit_reload_policy_aux(field: Field, index: &Index) {
         let mut writer = index.writer_for_tests().unwrap();
-        assert_eq!(reader.searcher().num_docs(), 0);
+        assert_eq!(index.searcher().unwrap().num_docs(), 0);
         writer.add_document(doc!(field=>1u64));
         writer.commit().unwrap();
-        // We need a loop here because it is possible for notify to send more than
-        // one modify event. It was observed on CI on MacOS.
-        loop {
-            assert!(receiver.recv().is_ok());
-            if reader.searcher().num_docs() == 1 {
-                break;
-            }
-        }
+        assert!(index.searcher().unwrap().num_docs() == 1);
         writer.add_document(doc!(field=>2u64));
         writer.commit().unwrap();
-        // ... Same as above
-        loop {
-            assert!(receiver.recv().is_ok());
-            if reader.searcher().num_docs() == 2 {
-                break;
-            }
-        }
+        assert!(index.searcher().unwrap().num_docs() == 2);
     }
 
     // This test will not pass on windows, because windows
     // prevent deleting files that are MMapped.
-    #[cfg(not(target_os = "windows"))]
+    /*#[cfg(not(target_os = "windows"))]
     #[test]
     fn garbage_collect_works_as_intended() {
         let directory = RamDirectory::create();
@@ -772,7 +666,7 @@ mod tests {
         let field = schema.get_field("num_likes").unwrap();
         let index = Index::create(directory.clone(), schema, IndexSettings::default()).unwrap();
 
-        let mut writer = index.writer_with_num_threads(8, 24_000_000).unwrap();
+        let mut writer = index.writer(24_000_000).unwrap();
         for i in 0u64..8_000u64 {
             writer.add_document(doc!(field => i));
         }
@@ -783,18 +677,11 @@ mod tests {
         writer.commit().unwrap();
         let mem_right_after_commit = directory.total_mem_usage();
         assert!(receiver.recv().is_ok());
-        let reader = index
-            .reader_builder()
-            .reload_policy(ReloadPolicy::Manual)
-            .try_into()
-            .unwrap();
 
-        assert_eq!(reader.searcher().num_docs(), 8_000);
-        writer.wait_merging_threads().unwrap();
+        assert_eq!(index.searcher()?.num_docs(), 8_000);
         let mem_right_after_merge_finished = directory.total_mem_usage();
 
-        reader.reload().unwrap();
-        let searcher = reader.searcher();
+        let searcher = index.searcher()?;
         assert_eq!(searcher.num_docs(), 8_000);
         assert!(
             mem_right_after_merge_finished < mem_right_after_commit,
@@ -802,5 +689,5 @@ mod tests {
             mem_right_after_merge_finished,
             mem_right_after_commit
         );
-    }
+    }*/
 }

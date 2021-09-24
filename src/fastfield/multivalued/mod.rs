@@ -19,7 +19,6 @@ mod tests {
     use crate::Index;
     use crate::Term;
     use chrono::Duration;
-    use futures::executor::block_on;
     use proptest::prop_oneof;
     use proptest::proptest;
     use proptest::strategy::Strategy;
@@ -41,7 +40,7 @@ mod tests {
         index_writer.add_document(doc!(field=>5u64, field=>20u64,field=>1u64));
         assert!(index_writer.commit().is_ok());
 
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         let segment_reader = searcher.segment_reader(0);
         let mut vals = Vec::new();
         let multi_value_reader = segment_reader.fast_fields().u64s(field).unwrap();
@@ -90,8 +89,7 @@ mod tests {
             .add_document(doc!(date_field=>first_time_stamp + Duration::seconds(3), time_i=>4i64));
         assert!(index_writer.commit().is_ok());
 
-        let reader = index.reader().unwrap();
-        let searcher = reader.searcher();
+        let searcher = index.searcher().unwrap();
         let reader = searcher.segment_reader(0);
         assert_eq!(reader.num_docs(), 5);
 
@@ -220,7 +218,7 @@ mod tests {
         index_writer.add_document(doc!(field=> -5i64, field => -20i64, field=>1i64));
         assert!(index_writer.commit().is_ok());
 
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         let segment_reader = searcher.segment_reader(0);
         let mut vals = Vec::new();
         let multi_value_reader = segment_reader.fast_fields().i64s(field).unwrap();
@@ -279,8 +277,7 @@ mod tests {
                         .searchable_segment_ids()
                         .expect("Searchable segments failed.");
                     if segment_ids.len() >= 2 {
-                        block_on(index_writer.merge(&segment_ids)).unwrap();
-                        assert!(index_writer.segment_updater().wait_merging_thread().is_ok());
+                        index_writer.merge(&segment_ids).unwrap();
                     }
                 }
             }
@@ -294,8 +291,7 @@ mod tests {
                 .searchable_segment_ids()
                 .expect("Searchable segments failed.");
             if !segment_ids.is_empty() {
-                block_on(index_writer.merge(&segment_ids)).unwrap();
-                assert!(index_writer.wait_merging_threads().is_ok());
+                index_writer.merge(&segment_ids).unwrap();
             }
         }
     }

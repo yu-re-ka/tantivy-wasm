@@ -31,15 +31,14 @@ use crate::{Score, SegmentReader, TantivyError};
 /// let schema = schema_builder.build();
 /// let index = Index::create_in_ram(schema);
 ///
-/// let mut index_writer = index.writer_with_num_threads(1, 10_000_000).unwrap();
+/// let mut index_writer = index.writer(10_000_000).unwrap();
 /// index_writer.add_document(doc!(title => "The Name of the Wind", price => 30_200u64));
 /// index_writer.add_document(doc!(title => "The Diary of Muadib", price => 29_240u64));
 /// index_writer.add_document(doc!(title => "A Dairy Cow", price => 21_240u64));
 /// index_writer.add_document(doc!(title => "The Diary of a Young Girl", price => 20_120u64));
 /// assert!(index_writer.commit().is_ok());
 ///
-/// let reader = index.reader().unwrap();
-/// let searcher = reader.searcher();
+/// let searcher = index.searcher()?;
 ///
 /// let query_parser = QueryParser::for_index(&index, vec![title]);
 /// let query = query_parser.parse_query("diary").unwrap();

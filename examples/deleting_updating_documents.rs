@@ -11,17 +11,15 @@
 use tantivy::collector::TopDocs;
 use tantivy::query::TermQuery;
 use tantivy::schema::*;
-use tantivy::{doc, Index, IndexReader};
+use tantivy::{doc, Index, Searcher};
 
 // A simple helper function to fetch a single document
 // given its id from our index.
 // It will be helpful to check our work.
 fn extract_doc_given_isbn(
-    reader: &IndexReader,
+    searcher: &Searcher,
     isbn_term: &Term,
 ) -> tantivy::Result<Option<Document>> {
-    let searcher = reader.searcher();
-
     // This is the simplest query you can think of.
     // It matches all of the documents containing a specific term.
     //
@@ -86,12 +84,11 @@ fn main() -> tantivy::Result<()> {
        isbn => "978-9176370711",
     ));
     index_writer.commit()?;
-    let reader = index.reader()?;
 
     let frankenstein_isbn = Term::from_field_text(isbn, "978-9176370711");
 
     // Oops our frankenstein doc seems misspelled
-    let frankenstein_doc_misspelled = extract_doc_given_isbn(&reader, &frankenstein_isbn)?.unwrap();
+    let frankenstein_doc_misspelled = extract_doc_given_isbn(&index.searcher()?, &frankenstein_isbn)?.unwrap();
     assert_eq!(
         schema.to_json(&frankenstein_doc_misspelled),
         r#"{"isbn":["978-9176370711"],"title":["Frankentein"]}"#,
@@ -129,11 +126,9 @@ fn main() -> tantivy::Result<()> {
     // In this example, your search engine will at no point be missing the *Frankenstein* document.
     // Everything happened as if the document was updated.
     index_writer.commit()?;
-    // We reload our searcher to make our change available to clients.
-    reader.reload()?;
 
     // No more typo!
-    let frankenstein_new_doc = extract_doc_given_isbn(&reader, &frankenstein_isbn)?.unwrap();
+    let frankenstein_new_doc = extract_doc_given_isbn(&index.searcher()?, &frankenstein_isbn)?.unwrap();
     assert_eq!(
         schema.to_json(&frankenstein_new_doc),
         r#"{"isbn":["978-9176370711"],"title":["Frankenstein"]}"#,

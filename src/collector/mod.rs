@@ -53,8 +53,7 @@ use tantivy::collector::{Count, TopDocs};
 #        title => "The Diary of Muadib",
 #     ));
 #     index_writer.commit()?;
-#     let reader = index.reader()?;
-#     let searcher = reader.searcher();
+#     let searcher = index.searcher()?;
 #     let query_parser = QueryParser::for_index(&index, vec![title]);
 #     let query = query_parser.parse_query("diary")?;
 let (doc_count, top_docs): (usize, Vec<(Score, DocAddress)>) =

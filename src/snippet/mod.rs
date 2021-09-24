@@ -16,14 +16,13 @@ pub struct FragmentCandidate {
     score: Score,
     start_offset: usize,
     stop_offset: usize,
-    num_chars: usize,
     highlighted: Vec<Range<usize>>,
 }
 
 impl FragmentCandidate {
     /// Create a basic `FragmentCandidate`
     ///
-    /// `score`, `num_chars` are set to 0
+    /// `score` is set to 0
     /// and `highlighted` is set to empty vec
     /// stop_offset is set to start_offset, which is taken as a param.
     fn new(start_offset: usize) -> FragmentCandidate {
@@ -31,7 +30,6 @@ impl FragmentCandidate {
             score: 0.0,
             start_offset,
             stop_offset: start_offset,
-            num_chars: 0,
             highlighted: vec![],
         }
     }
@@ -198,7 +196,7 @@ fn select_best_fragment_combination(fragments: &[FragmentCandidate], text: &str)
 /// #    let text_field = schema_builder.add_text_field("text", TEXT);
 /// #    let schema = schema_builder.build();
 /// #    let index = Index::create_in_ram(schema);
-/// #    let mut index_writer = index.writer_with_num_threads(1, 10_000_000)?;
+/// #    let mut index_writer = index.writer(10_000_000)?;
 /// #    let doc = doc!(text_field => r#"Comme je descendais des Fleuves impassibles,
 /// #   Je ne me sentis plus guidé par les haleurs :
 /// #  Des Peaux-Rouges criards les avaient pris pour cibles,
@@ -214,8 +212,7 @@ fn select_best_fragment_combination(fragments: &[FragmentCandidate], text: &str)
 /// #    let query_parser = QueryParser::for_index(&index, vec![text_field]);
 /// // ...
 /// let query = query_parser.parse_query("haleurs flamands").unwrap();
-/// # let reader = index.reader()?;
-/// # let searcher = reader.searcher();
+/// # let searcher = index.searcher()?;
 /// let mut snippet_generator = SnippetGenerator::create(&searcher, &*query, text_field)?;
 /// snippet_generator.set_max_num_chars(100);
 /// let snippet = snippet_generator.snippet_from_doc(&doc);
@@ -485,7 +482,7 @@ Survey in 2016, 2017, and 2018."#;
             index_writer.add_document(doc!(text_field => "a b"));
             index_writer.commit().unwrap();
         }
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         let query_parser = QueryParser::for_index(&index, vec![text_field]);
         {
             let query = query_parser.parse_query("e").unwrap();
@@ -542,7 +539,7 @@ Survey in 2016, 2017, and 2018."#;
             }
             index_writer.commit().unwrap();
         }
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         let query_parser = QueryParser::for_index(&index, vec![text_field]);
         let query = query_parser.parse_query("rust design").unwrap();
         let mut snippet_generator =

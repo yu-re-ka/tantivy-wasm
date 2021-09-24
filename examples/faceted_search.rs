@@ -66,8 +66,7 @@ fn main() -> tantivy::Result<()> {
     ));
     index_writer.commit()?;
 
-    let reader = index.reader()?;
-    let searcher = reader.searcher();
+    let searcher = index.searcher()?;
     {
         let mut facet_collector = FacetCollector::for_field(classification);
         facet_collector.add_facet("/Felidae");

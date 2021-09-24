@@ -1,13 +1,7 @@
 use super::*;
-use futures::channel::oneshot;
-use futures::executor::block_on;
 use std::io::Write;
 use std::mem;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::Ordering::SeqCst;
-use std::sync::atomic::{AtomicBool, AtomicUsize};
-use std::sync::Arc;
-use std::time::Duration;
 
 #[cfg(feature = "mmap")]
 mod mmap_directory_tests {
@@ -51,17 +45,11 @@ mod mmap_directory_tests {
         super::test_lock_non_blocking(&directory);
     }
 
-    #[test]
+    /*#[test]
     fn test_lock_blocking() {
         let directory = make_directory();
         super::test_lock_blocking(&directory);
-    }
-
-    #[test]
-    fn test_watch() {
-        let directory = make_directory();
-        super::test_watch(&directory);
-    }
+    }*/
 }
 
 mod ram_directory_tests {
@@ -105,17 +93,11 @@ mod ram_directory_tests {
         super::test_lock_non_blocking(&directory);
     }
 
-    #[test]
+    /*#[test]
     fn test_lock_blocking() {
         let directory = make_directory();
         super::test_lock_blocking(&directory);
-    }
-
-    #[test]
-    fn test_watch() {
-        let directory = make_directory();
-        super::test_watch(&directory);
-    }
+    }*/
 }
 
 #[test]
@@ -189,36 +171,6 @@ fn test_directory_delete(directory: &dyn Directory) -> crate::Result<()> {
     Ok(())
 }
 
-fn test_watch(directory: &dyn Directory) {
-    let counter: Arc<AtomicUsize> = Default::default();
-    let (tx, rx) = crossbeam::channel::unbounded();
-    let timeout = Duration::from_millis(500);
-
-    let handle = directory
-        .watch(WatchCallback::new(move || {
-            let val = counter.fetch_add(1, SeqCst);
-            tx.send(val + 1).unwrap();
-        }))
-        .unwrap();
-
-    assert!(directory
-        .atomic_write(Path::new("meta.json"), b"foo")
-        .is_ok());
-    assert_eq!(rx.recv_timeout(timeout), Ok(1));
-
-    assert!(directory
-        .atomic_write(Path::new("meta.json"), b"bar")
-        .is_ok());
-    assert_eq!(rx.recv_timeout(timeout), Ok(2));
-
-    mem::drop(handle);
-
-    assert!(directory
-        .atomic_write(Path::new("meta.json"), b"qux")
-        .is_ok());
-    assert!(rx.recv_timeout(timeout).is_err());
-}
-
 fn test_lock_non_blocking(directory: &dyn Directory) {
     {
         let lock_a_res = directory.acquire_lock(&Lock {
@@ -244,7 +196,7 @@ fn test_lock_non_blocking(directory: &dyn Directory) {
     assert!(lock_a_res.is_ok());
 }
 
-fn test_lock_blocking(directory: &dyn Directory) {
+/*fn test_lock_blocking(directory: &dyn Directory) {
     let lock_a_res = directory.acquire_lock(&Lock {
         filepath: PathBuf::from("a.lock"),
         is_blocking: true,
@@ -256,7 +208,7 @@ fn test_lock_blocking(directory: &dyn Directory) {
     std::thread::spawn(move || {
         //< lock_a_res is sent to the thread.
         in_thread_clone.store(true, SeqCst);
-        let _just_sync = block_on(receiver);
+        let _just_sync = receiver;
         // explicitely droping lock_a_res. It would have been sufficient to just force it
         // to be part of the move, but the intent seems clearer that way.
         drop(lock_a_res);
@@ -283,4 +235,4 @@ fn test_lock_blocking(directory: &dyn Directory) {
     assert!(block_on(receiver2).is_ok());
     assert!(sender.send(()).is_ok());
     assert!(join_handle.join().is_ok());
-}
+}*/

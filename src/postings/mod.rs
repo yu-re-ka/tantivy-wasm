@@ -95,7 +95,7 @@ pub mod tests {
         index_writer.add_document(doc!(title => r#"abc be be be be abc"#));
         index_writer.commit()?;
 
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         let inverted_index = searcher.segment_reader(0u32).inverted_index(title)?;
         let term = Term::from_field_text(title, "abc");
         let mut positions = Vec::new();
@@ -170,14 +170,12 @@ pub mod tests {
         index
             .tokenizers()
             .register("simple_no_truncation", SimpleTokenizer);
-        let reader = index.reader().unwrap();
         let mut index_writer = index.writer_for_tests().unwrap();
         index_writer.set_merge_policy(Box::new(NoMergePolicy));
         {
             index_writer.add_document(doc!(text_field=>exceeding_token_text));
             index_writer.commit().unwrap();
-            reader.reload().unwrap();
-            let searcher = reader.searcher();
+            let searcher = index.searcher().unwrap();
             let segment_reader = searcher.segment_reader(0u32);
             let inverted_index = segment_reader.inverted_index(text_field)?;
             assert_eq!(inverted_index.terms().num_terms(), 1);
@@ -188,8 +186,7 @@ pub mod tests {
         {
             index_writer.add_document(doc!(text_field=>ok_token_text.clone()));
             index_writer.commit().unwrap();
-            reader.reload().unwrap();
-            let searcher = reader.searcher();
+            let searcher = index.searcher().unwrap();
             let segment_reader = searcher.segment_reader(1u32);
             let inverted_index = segment_reader.inverted_index(text_field)?;
             assert_eq!(inverted_index.terms().num_terms(), 1);
@@ -321,7 +318,7 @@ pub mod tests {
             assert!(index_writer.commit().is_ok());
         }
         let term_a = Term::from_field_text(text_field, "a");
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         let segment_reader = searcher.segment_reader(0);
         let mut postings = segment_reader
             .inverted_index(text_field)?
@@ -356,7 +353,7 @@ pub mod tests {
             }
             index
         };
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         let segment_reader = searcher.segment_reader(0);
 
         // check that the basic usage works
@@ -422,7 +419,7 @@ pub mod tests {
             index_writer.delete_term(term_0);
             assert!(index_writer.commit().is_ok());
         }
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         assert_eq!(searcher.segment_readers().len(), 1);
         let segment_reader = searcher.segment_reader(0);
 
@@ -473,7 +470,7 @@ pub mod tests {
             index_writer.delete_term(term_1);
             assert!(index_writer.commit().is_ok());
         }
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
 
         // finally, check that it's empty
         {
@@ -609,8 +606,7 @@ mod bench {
 
     #[bench]
     fn bench_segment_postings(b: &mut Bencher) {
-        let reader = INDEX.reader().unwrap();
-        let searcher = reader.searcher();
+        let searcher = INDEX.searcher().unwrap();
         let segment_reader = searcher.segment_reader(0);
 
         b.iter(|| {
@@ -626,8 +622,7 @@ mod bench {
 
     #[bench]
     fn bench_segment_intersection(b: &mut Bencher) {
-        let reader = INDEX.reader().unwrap();
-        let searcher = reader.searcher();
+        let searcher = INDEX.searcher().unwrap();
         let segment_reader = searcher.segment_reader(0);
         b.iter(|| {
             let segment_postings_a = segment_reader
@@ -665,8 +660,7 @@ mod bench {
     }
 
     fn bench_skip_next(p: f64, b: &mut Bencher) {
-        let reader = INDEX.reader().unwrap();
-        let searcher = reader.searcher();
+        let searcher = INDEX.searcher().unwrap();
         let segment_reader = searcher.segment_reader(0);
         let docs = tests::sample(segment_reader.num_docs(), p);
 
@@ -724,8 +718,7 @@ mod bench {
 
     #[bench]
     fn bench_iterate_segment_postings(b: &mut Bencher) {
-        let reader = INDEX.reader().unwrap();
-        let searcher = reader.searcher();
+        let searcher = INDEX.searcher().unwrap();
         let segment_reader = searcher.segment_reader(0);
         b.iter(|| {
             let n: u32 = test::black_box(17);

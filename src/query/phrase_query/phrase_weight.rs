@@ -120,7 +120,7 @@ mod tests {
         let index = create_index(&["a c", "a a b d a b c", " a b"]);
         let schema = index.schema();
         let text_field = schema.get_field("text").unwrap();
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         let phrase_query = PhraseQuery::new(vec![
             Term::from_field_text(text_field, "a"),
             Term::from_field_text(text_field, "b"),

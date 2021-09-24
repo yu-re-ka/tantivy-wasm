@@ -136,7 +136,6 @@ mod tests {
     use crate::Score;
     use crate::{assert_nearly_equals, Index, Searcher, SegmentId, Term};
     use crate::{DocId, DocSet, TERMINATED};
-    use futures::executor::block_on;
     use proptest::prelude::*;
 
     #[test]
@@ -297,7 +296,7 @@ mod tests {
         let text_field = schema_builder.add_text_field("text", TEXT);
         let schema = schema_builder.build();
         let index = Index::create_in_ram(schema);
-        let mut writer = index.writer_with_num_threads(3, 30_000_000)?;
+        let mut writer = index.writer(30_000_000)?;
         use rand::Rng;
         let mut rng = rand::thread_rng();
         writer.set_merge_policy(Box::new(NoMergePolicy));
@@ -313,9 +312,8 @@ mod tests {
             IndexRecordOption::WithFreqs,
         );
         let segment_ids: Vec<SegmentId>;
-        let reader = index.reader()?;
         {
-            let searcher = reader.searcher();
+            let searcher = index.searcher()?;
             segment_ids = searcher
                 .segment_readers()
                 .iter()
@@ -324,11 +322,10 @@ mod tests {
             test_block_wand_aux(&term_query, &searcher)?;
         }
         {
-            let _ = block_on(writer.merge(&segment_ids[..]));
+            let _ = writer.merge(&segment_ids[..]);
         }
         {
-            reader.reload()?;
-            let searcher = reader.searcher();
+            let searcher = index.searcher()?;
             assert_eq!(searcher.segment_readers().len(), 1);
             test_block_wand_aux(&term_query, &searcher)?;
         }

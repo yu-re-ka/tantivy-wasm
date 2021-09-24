@@ -18,7 +18,6 @@ mod tests {
         DocAddress,
     };
     use crate::{DocSet, IndexSettings, Postings, Term};
-    use futures::executor::block_on;
 
     fn create_test_index_posting_list_issue(index_settings: Option<IndexSettings>) -> Index {
         let mut schema_builder = schema::Schema::builder();
@@ -55,8 +54,7 @@ mod tests {
                 .searchable_segment_ids()
                 .expect("Searchable segments failed.");
             let mut index_writer = index.writer_for_tests().unwrap();
-            assert!(block_on(index_writer.merge(&segment_ids)).is_ok());
-            assert!(index_writer.wait_merging_threads().is_ok());
+            assert!(index_writer.merge(&segment_ids).is_ok());
         }
         index
     }
@@ -147,8 +145,7 @@ mod tests {
                 .searchable_segment_ids()
                 .expect("Searchable segments failed.");
             let mut index_writer = index.writer_for_tests().unwrap();
-            assert!(block_on(index_writer.merge(&segment_ids)).is_ok());
-            assert!(index_writer.wait_merging_threads().is_ok());
+            assert!(index_writer.merge(&segment_ids).is_ok());
         }
         index
     }
@@ -186,9 +183,8 @@ mod tests {
         );
 
         let int_field = index.schema().get_field("intval").unwrap();
-        let reader = index.reader().unwrap();
 
-        let searcher = reader.searcher();
+        let searcher = index.searcher().unwrap();
         assert_eq!(searcher.segment_readers().len(), 1);
         let segment_reader = searcher.segment_readers().last().unwrap();
 
@@ -223,7 +219,7 @@ mod tests {
         }
 
         let my_text_field = index.schema().get_field("text_field").unwrap();
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         {
             let my_text_field = index.schema().get_field("text_field").unwrap();
 
@@ -302,12 +298,11 @@ mod tests {
             false,
         );
 
-        let reader = index.reader().unwrap();
-        let searcher = reader.searcher();
+        let searcher = index.searcher().unwrap();
         assert_eq!(searcher.segment_readers().len(), 1);
         let segment_reader = searcher.segment_readers().last().unwrap();
 
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         {
             let my_text_field = index.schema().get_field("text_field").unwrap();
 
@@ -372,8 +367,7 @@ mod tests {
         let int_field = index.schema().get_field("intval").unwrap();
         let multi_numbers = index.schema().get_field("multi_numbers").unwrap();
         let bytes_field = index.schema().get_field("bytes").unwrap();
-        let reader = index.reader().unwrap();
-        let searcher = reader.searcher();
+        let searcher = index.searcher().unwrap();
         assert_eq!(searcher.segment_readers().len(), 1);
         let segment_reader = searcher.segment_readers().last().unwrap();
 
@@ -416,7 +410,7 @@ mod tests {
             assert_eq!(fieldnorm_reader.fieldnorm(5), 3); // the biggest num
         }
 
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         {
             let my_text_field = index.schema().get_field("text_field").unwrap();
 

@@ -507,19 +507,17 @@ mod tests {
         index_writer.commit().unwrap();
         index_writer.add_document(doc!());
         index_writer.commit().unwrap();
-        let reader = index.reader().unwrap();
-        let segment_ids: Vec<SegmentId> = reader
+        let segment_ids: Vec<SegmentId> = index
             .searcher()
+            .unwrap()
             .segment_readers()
             .iter()
             .map(SegmentReader::segment_id)
             .collect();
         assert_eq!(segment_ids.len(), 2);
-        let merge_future = index_writer.merge(&segment_ids[..]);
-        let merge_res = futures::executor::block_on(merge_future);
+        let merge_res = index_writer.merge(&segment_ids[..]);
         assert!(merge_res.is_ok());
-        assert!(reader.reload().is_ok());
-        assert_eq!(reader.searcher().segment_readers().len(), 1);
+        assert_eq!(index.searcher().unwrap().segment_readers().len(), 1);
     }
 
     #[test]
@@ -553,8 +551,7 @@ mod tests {
             multi_date_field => crate::DateTime::from_u64(6i64.to_u64())
         ));
         index_writer.commit().unwrap();
-        let reader = index.reader().unwrap();
-        let searcher = reader.searcher();
+        let searcher = index.searcher().unwrap();
         assert_eq!(searcher.segment_readers().len(), 1);
         let segment_reader = searcher.segment_reader(0);
         let fast_fields = segment_reader.fast_fields();

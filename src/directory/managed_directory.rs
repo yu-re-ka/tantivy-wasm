@@ -6,7 +6,6 @@ use crate::directory::Lock;
 use crate::directory::META_LOCK;
 use crate::directory::{DirectoryLock, FileHandle};
 use crate::directory::{FileSlice, WritePtr};
-use crate::directory::{WatchCallback, WatchHandle};
 use crate::error::DataCorruption;
 use crate::Directory;
 
@@ -305,10 +304,6 @@ impl Directory for ManagedDirectory {
 
     fn acquire_lock(&self, lock: &Lock) -> result::Result<DirectoryLock, LockError> {
         self.directory.acquire_lock(lock)
-    }
-
-    fn watch(&self, watch_callback: WatchCallback) -> crate::Result<WatchHandle> {
-        self.directory.watch(watch_callback)
     }
 }
 

@@ -9,7 +9,6 @@ mod tests {
     use crate::schema::{BytesOptions, IndexRecordOption, Schema, Value};
     use crate::{query::TermQuery, schema::FAST, schema::INDEXED, schema::STORED};
     use crate::{DocAddress, DocSet, Index, Searcher, Term};
-    use std::ops::Deref;
 
     #[test]
     fn test_bytes() -> crate::Result<()> {
@@ -24,7 +23,7 @@ mod tests {
         index_writer.add_document(doc!(bytes_field=>vec![1u8, 3, 5, 7, 9]));
         index_writer.add_document(doc!(bytes_field=>vec![0u8; 1000]));
         index_writer.commit()?;
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         let segment_reader = searcher.segment_reader(0);
         let bytes_reader = segment_reader.fast_fields().bytes(bytes_field).unwrap();
         assert_eq!(bytes_reader.get_bytes(0), &[0u8, 1, 2, 3]);
@@ -38,7 +37,7 @@ mod tests {
 
     fn create_index_for_test<T: Into<BytesOptions>>(
         byte_options: T,
-    ) -> crate::Result<impl Deref<Target = Searcher>> {
+    ) -> crate::Result<Searcher> {
         let mut schema_builder = Schema::builder();
         let field = schema_builder.add_bytes_field("string_bytes", byte_options.into());
         let schema = schema_builder.build();
@@ -49,7 +48,7 @@ mod tests {
                 field => b"lucene".as_ref()
         ));
         index_writer.commit()?;
-        Ok(index.reader()?.searcher())
+        Ok(index.searcher()?)
     }
 
     #[test]

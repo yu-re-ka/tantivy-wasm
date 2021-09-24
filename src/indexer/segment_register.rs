@@ -3,7 +3,6 @@ use crate::core::SegmentMeta;
 use crate::indexer::delete_queue::DeleteCursor;
 use crate::indexer::segment_entry::SegmentEntry;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::fmt::Display;
 use std::fmt::{self, Debug, Formatter};
 
@@ -48,11 +47,9 @@ impl SegmentRegister {
 
     pub fn get_mergeable_segments(
         &self,
-        in_merge_segment_ids: &HashSet<SegmentId>,
     ) -> Vec<SegmentMeta> {
         self.segment_states
             .values()
-            .filter(|segment_entry| !in_merge_segment_ids.contains(&segment_entry.segment_id()))
             .map(|segment_entry| segment_entry.meta().clone())
             .collect()
     }

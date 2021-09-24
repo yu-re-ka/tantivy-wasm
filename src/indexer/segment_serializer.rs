@@ -49,11 +49,6 @@ impl SegmentSerializer {
         })
     }
 
-    /// The memory used (inclusive childs)
-    pub fn mem_usage(&self) -> usize {
-        self.store_writer.mem_usage()
-    }
-
     pub fn segment(&self) -> &Segment {
         &self.segment
     }

@@ -1135,7 +1135,6 @@ mod tests {
     use crate::{schema, DocSet, SegmentId};
     use crate::{schema::INDEXED, Order};
     use byteorder::{BigEndian, ReadBytesExt};
-    use futures::executor::block_on;
     use schema::FAST;
 
     #[test]
@@ -1154,7 +1153,6 @@ mod tests {
         let score_field = schema_builder.add_u64_field("score", score_fieldtype);
         let bytes_score_field = schema_builder.add_bytes_field("score_bytes", FAST);
         let index = Index::create_in_ram(schema_builder.build());
-        let reader = index.reader()?;
         let curr_time = chrono::Utc::now();
         {
             let mut index_writer = index.writer_for_tests()?;
@@ -1196,12 +1194,10 @@ mod tests {
                 .searchable_segment_ids()
                 .expect("Searchable segments failed.");
             let mut index_writer = index.writer_for_tests()?;
-            block_on(index_writer.merge(&segment_ids))?;
-            index_writer.wait_merging_threads()?;
+            index_writer.merge(&segment_ids)?;
         }
         {
-            reader.reload()?;
-            let searcher = reader.searcher();
+            let searcher = index.searcher()?;
             let get_doc_ids = |terms: Vec<Term>| {
                 let query = BooleanQuery::new_multiterms_query(terms);
                 searcher
@@ -1299,7 +1295,6 @@ mod tests {
         let bytes_score_field = schema_builder.add_bytes_field("score_bytes", FAST);
         let index = Index::create_in_ram(schema_builder.build());
         let mut index_writer = index.writer_for_tests()?;
-        let reader = index.reader().unwrap();
         let search_term = |searcher: &Searcher, term: Term| {
             let collector = FastFieldTestCollector::for_field(score_field);
             let bytes_collector = BytesFastFieldTestCollector::for_field(bytes_score_field);
@@ -1335,8 +1330,7 @@ mod tests {
                 bytes_score_field => vec![0u8, 0, 0, 3],
             ));
             index_writer.commit()?;
-            reader.reload()?;
-            let searcher = reader.searcher();
+            let searcher = index.searcher()?;
             assert_eq!(searcher.num_docs(), 2);
             assert_eq!(searcher.segment_readers()[0].num_docs(), 2);
             assert_eq!(searcher.segment_readers()[0].max_doc(), 3);
@@ -1382,8 +1376,7 @@ mod tests {
                 bytes_score_field => vec![0u8, 0, 27, 88],
             ));
             index_writer.commit()?;
-            reader.reload()?;
-            let searcher = reader.searcher();
+            let searcher = index.searcher()?;
 
             assert_eq!(searcher.segment_readers().len(), 2);
             assert_eq!(searcher.num_docs(), 3);
@@ -1439,9 +1432,8 @@ mod tests {
         {
             // merging the segments
             let segment_ids = index.searchable_segment_ids()?;
-            block_on(index_writer.merge(&segment_ids))?;
-            reader.reload()?;
-            let searcher = reader.searcher();
+            index_writer.merge(&segment_ids)?;
+            let searcher = index.searcher()?;
             assert_eq!(searcher.segment_readers().len(), 1);
             assert_eq!(searcher.num_docs(), 3);
             assert_eq!(searcher.segment_readers()[0].num_docs(), 3);
@@ -1487,8 +1479,7 @@ mod tests {
             index_writer.delete_term(Term::from_field_text(text_field, "c"));
             index_writer.commit()?;
 
-            reader.reload()?;
-            let searcher = reader.searcher();
+            let searcher = index.searcher()?;
             assert_eq!(searcher.segment_readers().len(), 1);
             assert_eq!(searcher.num_docs(), 2);
             assert_eq!(searcher.segment_readers()[0].num_docs(), 2);
@@ -1532,10 +1523,9 @@ mod tests {
         {
             // Test merging a single segment in order to remove deletes.
             let segment_ids = index.searchable_segment_ids()?;
-            block_on(index_writer.merge(&segment_ids))?;
-            reader.reload()?;
+            index_writer.merge(&segment_ids)?;
 
-            let searcher = reader.searcher();
+            let searcher = index.searcher()?;
             assert_eq!(searcher.segment_readers().len(), 1);
             assert_eq!(searcher.num_docs(), 2);
             assert_eq!(searcher.segment_readers()[0].num_docs(), 2);
@@ -1582,9 +1572,8 @@ mod tests {
             index_writer.delete_term(Term::from_field_text(text_field, "g"));
             index_writer.commit()?;
             let segment_ids = index.searchable_segment_ids()?;
-            reader.reload()?;
 
-            let searcher = reader.searcher();
+            let searcher = index.searcher()?;
             assert!(segment_ids.is_empty());
             assert!(searcher.segment_readers().is_empty());
             assert_eq!(searcher.num_docs(), 0);
@@ -1664,7 +1653,6 @@ mod tests {
         }
         let index = index_builder.create_in_ram().unwrap();
         //let index = Index::create_in_ram(schema_builder.build());
-        let reader = index.reader().unwrap();
         let mut int_val = 0;
         {
             let mut index_writer = index.writer_for_tests().unwrap();
@@ -1712,9 +1700,8 @@ mod tests {
             index_writer.commit().expect("committed");
         }
 
-        reader.reload().unwrap();
         let test_searcher = |expected_num_docs: usize, expected: &[(&str, u64)]| {
-            let searcher = reader.searcher();
+            let searcher = index.searcher().unwrap();
             let mut facet_collector = FacetCollector::for_field(facet_field);
             facet_collector.add_facet(Facet::from("/top"));
             let (count, facet_counts) = searcher
@@ -1750,9 +1737,7 @@ mod tests {
                 .searchable_segment_ids()
                 .expect("Searchable segments failed.");
             let mut index_writer = index.writer_for_tests().unwrap();
-            block_on(index_writer.merge(&segment_ids)).expect("Merging failed");
-            index_writer.wait_merging_threads().unwrap();
-            reader.reload().unwrap();
+            index_writer.merge(&segment_ids).expect("Merging failed");
             test_searcher(
                 11,
                 &[
@@ -1773,7 +1758,6 @@ mod tests {
             let facet_term = Term::from_facet(facet_field, &facet);
             index_writer.delete_term(facet_term);
             index_writer.commit().unwrap();
-            reader.reload().unwrap();
             test_searcher(
                 9,
                 &[
@@ -1798,18 +1782,15 @@ mod tests {
         index_writer.commit().expect("commit failed");
         index_writer.add_document(doc!(int_field => 1u64));
         index_writer.commit().expect("commit failed");
-        let reader = index.reader().unwrap();
-        let searcher = reader.searcher();
-        assert_eq!(searcher.num_docs(), 2);
+        assert_eq!(index.searcher().unwrap().num_docs(), 2);
         index_writer.delete_term(Term::from_field_u64(int_field, 1));
         let segment_ids = index
             .searchable_segment_ids()
             .expect("Searchable segments failed.");
-        block_on(index_writer.merge(&segment_ids)).expect("Merging failed");
-        reader.reload().unwrap();
+        index_writer.merge(&segment_ids).expect("Merging failed");
         // commit has not been called yet. The document should still be
         // there.
-        assert_eq!(reader.searcher().num_docs(), 2);
+        assert_eq!(index.searcher().unwrap().num_docs(), 2);
     }
 
     #[test]
@@ -1820,7 +1801,6 @@ mod tests {
             .set_indexed();
         let int_field = schema_builder.add_u64_field("intvals", int_options);
         let index = Index::create_in_ram(schema_builder.build());
-        let reader = index.reader().unwrap();
         {
             let mut index_writer = index.writer_for_tests().unwrap();
             let mut doc = Document::default();
@@ -1834,20 +1814,15 @@ mod tests {
             let segment_ids = index
                 .searchable_segment_ids()
                 .expect("Searchable segments failed.");
-            assert!(block_on(index_writer.merge(&segment_ids)).is_ok());
+            assert!(index_writer.merge(&segment_ids).is_ok());
 
             // assert delete has not been committed
-            assert!(reader.reload().is_ok());
-            let searcher = reader.searcher();
-            assert_eq!(searcher.num_docs(), 2);
+            assert_eq!(index.searcher().unwrap().num_docs(), 2);
 
             index_writer.commit().unwrap();
-
-            index_writer.wait_merging_threads().unwrap();
         }
 
-        reader.reload().unwrap();
-        let searcher = reader.searcher();
+        let searcher = index.searcher().unwrap();
         assert_eq!(searcher.num_docs(), 0);
     }
 
@@ -1883,8 +1858,7 @@ mod tests {
             index_doc(&mut index_writer, &[1_000]);
             assert!(index_writer.commit().is_ok());
         }
-        let reader = index.reader().unwrap();
-        let searcher = reader.searcher();
+        let searcher = index.searcher().unwrap();
         let mut vals: Vec<u64> = Vec::new();
 
         {
@@ -1936,13 +1910,11 @@ mod tests {
                 .searchable_segment_ids()
                 .expect("Searchable segments failed.");
             let mut index_writer = index.writer_for_tests().unwrap();
-            assert!(block_on(index_writer.merge(&segment_ids)).is_ok());
-            assert!(index_writer.wait_merging_threads().is_ok());
+            assert!(index_writer.merge(&segment_ids).is_ok());
         }
-        assert!(reader.reload().is_ok());
 
         {
-            let searcher = reader.searcher();
+            let searcher = index.searcher().unwrap();
             let segment = searcher.segment_reader(0u32);
             let ff_reader = segment.fast_fields().u64s(int_field).unwrap();
 
@@ -2008,7 +1980,6 @@ mod tests {
         }
 
         writer.commit()?;
-        writer.wait_merging_threads()?;
 
         // If a merging thread fails, we should end up with more
         // than one segment here
@@ -2028,8 +1999,7 @@ mod tests {
             writer.add_document(doc!(text=>"hello happy tax payer"));
         }
         writer.commit()?;
-        let reader = index.reader()?;
-        let searcher = reader.searcher();
+        let searcher = index.searcher()?;
         let mut term_scorer = term_query
             .specialized_weight(&searcher, true)?
             .specialized_scorer(searcher.segment_reader(0u32), 1.0)?;
@@ -2040,8 +2010,7 @@ mod tests {
             writer.add_document(doc!(text=>"hello happy tax payer"));
         }
         writer.commit()?;
-        reader.reload()?;
-        let searcher = reader.searcher();
+        let searcher = index.searcher()?;
 
         assert_eq!(searcher.segment_readers().len(), 2);
         for segment_reader in searcher.segment_readers() {
@@ -2062,10 +2031,9 @@ mod tests {
             .iter()
             .map(|reader| reader.segment_id())
             .collect();
-        block_on(writer.merge(&segment_ids[..]))?;
+        writer.merge(&segment_ids[..])?;
 
-        reader.reload()?;
-        let searcher = reader.searcher();
+        let searcher = index.searcher()?;
         assert_eq!(searcher.segment_readers().len(), 1);
 
         let segment_reader = searcher.segment_reader(0u32);

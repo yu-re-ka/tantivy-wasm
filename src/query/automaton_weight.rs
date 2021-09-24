@@ -144,8 +144,7 @@ mod tests {
         let index = create_index();
         let field = index.schema().get_field("title").unwrap();
         let automaton_weight = AutomatonWeight::new(field, PrefixedByA);
-        let reader = index.reader().unwrap();
-        let searcher = reader.searcher();
+        let searcher = index.searcher().unwrap();
         let mut scorer = automaton_weight
             .scorer(searcher.segment_reader(0u32), 1.0)
             .unwrap();
@@ -162,8 +161,7 @@ mod tests {
         let index = create_index();
         let field = index.schema().get_field("title").unwrap();
         let automaton_weight = AutomatonWeight::new(field, PrefixedByA);
-        let reader = index.reader().unwrap();
-        let searcher = reader.searcher();
+        let searcher = index.searcher().unwrap();
         let mut scorer = automaton_weight
             .scorer(searcher.segment_reader(0u32), 1.32)
             .unwrap();

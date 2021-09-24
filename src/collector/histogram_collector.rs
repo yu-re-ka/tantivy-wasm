@@ -210,8 +210,7 @@ mod tests {
         let val_field = schema_builder.add_u64_field("val_field", FAST);
         let schema = schema_builder.build();
         let index = Index::create_in_ram(schema);
-        let reader = index.reader()?;
-        let searcher = reader.searcher();
+        let searcher = index.searcher()?;
         let all_query = AllQuery;
         let histogram_collector = HistogramCollector::new(val_field, 0u64, 2, 5);
         let histogram = searcher.search(&all_query, &histogram_collector)?;
@@ -225,14 +224,13 @@ mod tests {
         let val_field = schema_builder.add_i64_field("val_field", FAST);
         let schema = schema_builder.build();
         let index = Index::create_in_ram(schema);
-        let mut writer = index.writer_with_num_threads(1, 4_000_000)?;
+        let mut writer = index.writer(4_000_000)?;
         writer.add_document(doc!(val_field=>12i64));
         writer.add_document(doc!(val_field=>-30i64));
         writer.add_document(doc!(val_field=>-12i64));
         writer.add_document(doc!(val_field=>-10i64));
         writer.commit()?;
-        let reader = index.reader()?;
-        let searcher = reader.searcher();
+        let searcher = index.searcher()?;
         let all_query = AllQuery;
         let histogram_collector = HistogramCollector::new(val_field, -20i64, 10u64, 4);
         let histogram = searcher.search(&all_query, &histogram_collector)?;
@@ -246,7 +244,7 @@ mod tests {
         let val_field = schema_builder.add_i64_field("val_field", FAST);
         let schema = schema_builder.build();
         let index = Index::create_in_ram(schema);
-        let mut writer = index.writer_with_num_threads(1, 4_000_000)?;
+        let mut writer = index.writer(4_000_000)?;
         writer.add_document(doc!(val_field=>12i64));
         writer.commit()?;
         writer.add_document(doc!(val_field=>-30i64));
@@ -255,8 +253,7 @@ mod tests {
         writer.commit()?;
         writer.add_document(doc!(val_field=>-10i64));
         writer.commit()?;
-        let reader = index.reader()?;
-        let searcher = reader.searcher();
+        let searcher = index.searcher()?;
         let all_query = AllQuery;
         let histogram_collector = HistogramCollector::new(val_field, -20i64, 10u64, 4);
         let histogram = searcher.search(&all_query, &histogram_collector)?;
@@ -270,13 +267,12 @@ mod tests {
         let date_field = schema_builder.add_date_field("date_field", FAST);
         let schema = schema_builder.build();
         let index = Index::create_in_ram(schema);
-        let mut writer = index.writer_with_num_threads(1, 4_000_000)?;
+        let mut writer = index.writer(4_000_000)?;
         writer.add_document(doc!(date_field=>Utc.ymd(1982, 9, 17).and_hms(0, 0,0)));
         writer.add_document(doc!(date_field=>Utc.ymd(1986, 3, 9).and_hms(0, 0, 0)));
         writer.add_document(doc!(date_field=>Utc.ymd(1983, 9, 27).and_hms(0, 0, 0)));
         writer.commit()?;
-        let reader = index.reader()?;
-        let searcher = reader.searcher();
+        let searcher = index.searcher()?;
         let all_query = AllQuery;
         let week_histogram_collector = HistogramCollector::new(
             date_field,

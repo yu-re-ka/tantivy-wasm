@@ -147,8 +147,7 @@ mod tests {
         let mut index_writer = index.writer_for_tests().unwrap();
         index_writer.add_document(Document::new());
         assert!(index_writer.commit().is_ok());
-        let reader = index.reader().unwrap();
-        let searcher = reader.searcher();
+        let searcher = index.searcher().unwrap();
         let query = BoostQuery::new(Box::new(AllQuery), 0.2);
         let explanation = query.explain(&searcher, DocAddress::new(0, 0u32)).unwrap();
         assert_eq!(

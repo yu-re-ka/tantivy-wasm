@@ -124,8 +124,7 @@ impl<TFruit: Fruit> FruitHandle<TFruit> {
 /// index_writer.add_document(doc!(title => "The Diary of a Young Girl"));
 /// assert!(index_writer.commit().is_ok());
 ///
-/// let reader = index.reader().unwrap();
-/// let searcher = reader.searcher();
+/// let searcher = index.searcher()?;
 ///
 /// let mut collectors = MultiCollector::new();
 /// let top_docs_handle = collectors.add_collector(TopDocs::with_limit(2));
@@ -269,7 +268,7 @@ mod tests {
             index_writer.add_document(doc!(text=>"abc"));
             index_writer.commit().unwrap();
         }
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         let term = Term::from_field_text(text, "abc");
         let query = TermQuery::new(term, IndexRecordOption::Basic);
 

@@ -79,8 +79,7 @@ static LEV_BUILDER: Lazy<HashMap<(u8, bool), LevenshteinAutomatonBuilder>> = Laz
 ///         ));
 ///         index_writer.commit().unwrap();
 ///     }
-///     let reader = index.reader()?;
-///     let searcher = reader.searcher();
+///     let searcher = index.searcher()?;
 ///
 ///     {
 ///         let term = Term::from_field_text(title, "Diary");
@@ -100,29 +99,25 @@ pub struct FuzzyTermQuery {
     term: Term,
     /// How many changes are we going to allow
     distance: u8,
-    /// Should a transposition cost 1 or 2?
-    transposition_cost_one: bool,
     ///
     prefix: bool,
 }
 
 impl FuzzyTermQuery {
     /// Creates a new Fuzzy Query
-    pub fn new(term: Term, distance: u8, transposition_cost_one: bool) -> FuzzyTermQuery {
+    pub fn new(term: Term, distance: u8) -> FuzzyTermQuery {
         FuzzyTermQuery {
             term,
             distance,
-            transposition_cost_one,
             prefix: false,
         }
     }
 
     /// Creates a new Fuzzy Query of the Term prefix
-    pub fn new_prefix(term: Term, distance: u8, transposition_cost_one: bool) -> FuzzyTermQuery {
+    pub fn new_prefix(term: Term, distance: u8) -> FuzzyTermQuery {
         FuzzyTermQuery {
             term,
             distance,
-            transposition_cost_one,
             prefix: true,
         }
     }
@@ -186,14 +181,13 @@ mod test {
             ));
             index_writer.commit().unwrap();
         }
-        let reader = index.reader().unwrap();
-        let searcher = reader.searcher();
+        let searcher = index.searcher().unwrap();
 
         // passes because Levenshtein distance is 1 (substitute 'o' with 'a')
         {
             let term = Term::from_field_text(country_field, "japon");
 
-            let fuzzy_query = FuzzyTermQuery::new(term, 1, true);
+            let fuzzy_query = FuzzyTermQuery::new_prefix(term, 1);
             let top_docs = searcher
                 .search(&fuzzy_query, &TopDocs::with_limit(2))
                 .unwrap();
@@ -206,7 +200,7 @@ mod test {
         {
             let term = Term::from_field_text(country_field, "jap");
 
-            let fuzzy_query = FuzzyTermQuery::new(term, 1, true);
+            let fuzzy_query = FuzzyTermQuery::new_prefix(term, 1);
             let top_docs = searcher
                 .search(&fuzzy_query, &TopDocs::with_limit(2))
                 .unwrap();
@@ -217,7 +211,7 @@ mod test {
         {
             let term = Term::from_field_text(country_field, "jap");
 
-            let fuzzy_query = FuzzyTermQuery::new_prefix(term, 1, true);
+            let fuzzy_query = FuzzyTermQuery::new_prefix(term, 1);
             let top_docs = searcher
                 .search(&fuzzy_query, &TopDocs::with_limit(2))
                 .unwrap();

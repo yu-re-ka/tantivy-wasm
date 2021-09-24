@@ -342,7 +342,7 @@ mod test {
             // ok, now we should have a deleted doc
             index_writer.commit()?;
         }
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         assert_eq!(2, searcher.segment_reader(0).num_docs());
         assert_eq!(4, searcher.segment_reader(0).max_doc());
         Ok(())
@@ -373,7 +373,7 @@ mod test {
             // ok, now we should have a deleted doc
             index_writer2.commit()?;
         }
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         let docs: Vec<DocId> = searcher.segment_reader(0).doc_ids_alive().collect();
         assert_eq!(vec![0u32, 2u32], docs);
         Ok(())

@@ -59,8 +59,7 @@ use std::collections::BTreeMap;
 ///        index_writer.commit().unwrap();
 ///    }
 ///
-///    let reader = index.reader()?;
-///    let searcher = reader.searcher();
+///    let searcher = index.searcher()?;
 ///
 ///    // Make TermQuery's for "girl" and "diary" in the title
 ///    let girl_term_query: Box<dyn Query> = Box::new(TermQuery::new(
@@ -229,7 +228,7 @@ mod tests {
     #[test]
     fn test_union() -> crate::Result<()> {
         let index = create_test_index()?;
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         let text = index.schema().get_field("text").unwrap();
         let term_a = TermQuery::new(Term::from_field_text(text, "a"), IndexRecordOption::Basic);
         let term_d = TermQuery::new(Term::from_field_text(text, "d"), IndexRecordOption::Basic);
@@ -251,7 +250,7 @@ mod tests {
     #[test]
     fn test_intersection() -> crate::Result<()> {
         let index = create_test_index()?;
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         let text = index.schema().get_field("text").unwrap();
         let term_a = TermQuery::new(Term::from_field_text(text, "a"), IndexRecordOption::Basic);
         let term_b = TermQuery::new(Term::from_field_text(text, "b"), IndexRecordOption::Basic);

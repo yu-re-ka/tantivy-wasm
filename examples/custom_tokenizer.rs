@@ -89,8 +89,7 @@ fn main() -> tantivy::Result<()> {
     ));
     index_writer.commit()?;
 
-    let reader = index.reader()?;
-    let searcher = reader.searcher();
+    let searcher = index.searcher()?;
 
     // The query parser can interpret human queries.
     // Here, if the user does not specify which

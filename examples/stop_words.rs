@@ -92,9 +92,7 @@ fn main() -> tantivy::Result<()> {
 
     index_writer.commit()?;
 
-    let reader = index.reader()?;
-
-    let searcher = reader.searcher();
+    let searcher = index.searcher()?;
 
     let query_parser = QueryParser::for_index(&index, vec![title, body]);
 

@@ -48,7 +48,7 @@ mod tests {
         let (index, text_field) = aux_test_helper();
         let query_parser = QueryParser::for_index(&index, vec![text_field]);
         let query = query_parser.parse_query("(+a +b) d").unwrap();
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         assert_eq!(query.count(&searcher).unwrap(), 3);
     }
 
@@ -57,7 +57,7 @@ mod tests {
         let (index, text_field) = aux_test_helper();
         let query_parser = QueryParser::for_index(&index, vec![text_field]);
         let query = query_parser.parse_query("+a").unwrap();
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         let weight = query.weight(&searcher, true).unwrap();
         let scorer = weight.scorer(searcher.segment_reader(0u32), 1.0).unwrap();
         assert!(scorer.is::<TermScorer>());
@@ -67,7 +67,7 @@ mod tests {
     pub fn test_boolean_termonly_intersection() {
         let (index, text_field) = aux_test_helper();
         let query_parser = QueryParser::for_index(&index, vec![text_field]);
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         {
             let query = query_parser.parse_query("+a +b +c").unwrap();
             let weight = query.weight(&searcher, true).unwrap();
@@ -86,7 +86,7 @@ mod tests {
     pub fn test_boolean_reqopt() {
         let (index, text_field) = aux_test_helper();
         let query_parser = QueryParser::for_index(&index, vec![text_field]);
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         {
             let query = query_parser.parse_query("+a b").unwrap();
             let weight = query.weight(&searcher, true).unwrap();
@@ -118,11 +118,10 @@ mod tests {
             query
         };
 
-        let reader = index.reader().unwrap();
-
         let matching_docs = |boolean_query: &dyn Query| {
-            reader
+            index
                 .searcher()
+                .unwrap()
                 .search(boolean_query, &TEST_COLLECTOR_WITH_SCORE)
                 .unwrap()
                 .docs()
@@ -180,11 +179,10 @@ mod tests {
             query
         };
 
-        let reader = index.reader().unwrap();
-
         let matching_topdocs = |query: &dyn Query| {
-            reader
+            index
                 .searcher()
+                .unwrap()
                 .search(query, &TopDocs::with_limit(3))
                 .unwrap()
         };
@@ -236,8 +234,7 @@ mod tests {
             Term::from_field_text(text_field, "b"),
             IndexRecordOption::WithFreqs,
         ));
-        let reader = index.reader().unwrap();
-        let searcher = reader.searcher();
+        let searcher = index.searcher().unwrap();
         let boolean_query =
             BooleanQuery::new(vec![(Occur::Should, term_a), (Occur::Should, term_b)]);
         let boolean_weight = boolean_query.weight(&searcher, true).unwrap();
@@ -269,10 +266,10 @@ mod tests {
             let query: Box<dyn Query> = Box::new(term_query);
             query
         };
-        let reader = index.reader().unwrap();
         let score_docs = |boolean_query: &dyn Query| {
-            let fruit = reader
+            let fruit = index
                 .searcher()
+                .unwrap()
                 .search(boolean_query, &TEST_COLLECTOR_WITH_SCORE)
                 .unwrap();
             fruit.scores().to_vec()
@@ -295,11 +292,11 @@ mod tests {
         let text = schema_builder.add_text_field("text", STRING);
         let schema = schema_builder.build();
         let index = Index::create_in_ram(schema);
-        let mut index_writer = index.writer_with_num_threads(1, 5_000_000)?;
+        let mut index_writer = index.writer(5_000_000)?;
         index_writer.add_document(doc!(text=>"a"));
         index_writer.add_document(doc!(text=>"b"));
         index_writer.commit()?;
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         let term_a: Box<dyn Query> = Box::new(TermQuery::new(
             Term::from_field_text(text, "a"),
             IndexRecordOption::Basic,

@@ -1,8 +1,6 @@
-use crate::core::META_FILEPATH;
 use crate::directory::error::{DeleteError, OpenReadError, OpenWriteError};
 use crate::directory::AntiCallToken;
-use crate::directory::WatchCallbackList;
-use crate::directory::{Directory, FileSlice, WatchCallback, WatchHandle};
+use crate::directory::{Directory, FileSlice};
 use crate::directory::{TerminatingWrite, WritePtr};
 use common::HasLen;
 use fail::fail_point;
@@ -84,7 +82,6 @@ impl TerminatingWrite for VecWriter {
 #[derive(Default)]
 struct InnerDirectory {
     fs: HashMap<PathBuf, FileSlice>,
-    watch_router: WatchCallbackList,
 }
 
 impl InnerDirectory {
@@ -109,10 +106,6 @@ impl InnerDirectory {
 
     fn exists(&self, path: &Path) -> bool {
         self.fs.contains_key(path)
-    }
-
-    fn watch(&mut self, watch_handle: WatchCallback) -> WatchHandle {
-        self.watch_router.subscribe(watch_handle)
     }
 
     fn total_mem_usage(&self) -> usize {
@@ -229,14 +222,7 @@ impl Directory for RamDirectory {
 
         self.fs.write().unwrap().write(path_buf, data);
 
-        if path == *META_FILEPATH {
-            let _ = self.fs.write().unwrap().watch_router.broadcast();
-        }
         Ok(())
-    }
-
-    fn watch(&self, watch_callback: WatchCallback) -> crate::Result<WatchHandle> {
-        Ok(self.fs.write().unwrap().watch(watch_callback))
     }
 }
 

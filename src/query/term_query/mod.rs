@@ -30,7 +30,7 @@ mod tests {
             index_writer.add_document(doc);
             assert!(index_writer.commit().is_ok());
         }
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         let term_query = TermQuery::new(
             Term::from_field_text(text_field, "a"),
             IndexRecordOption::Basic,
@@ -57,7 +57,7 @@ mod tests {
             }
             index_writer.commit()?;
         }
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         let term_query = TermQuery::new(
             Term::from_field_text(text_field, "a"),
             IndexRecordOption::Basic,
@@ -95,7 +95,7 @@ mod tests {
             index_writer.add_document(doc!(left_field => "left4 left1"));
             index_writer.commit().unwrap();
         }
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         {
             let term = Term::from_field_text(left_field, "left2");
             let term_query = TermQuery::new(term, IndexRecordOption::WithFreqs);
@@ -143,8 +143,7 @@ mod tests {
         index_writer.commit().unwrap();
         let term_a = Term::from_field_text(text_field, "a");
         let term_query = TermQuery::new(term_a, IndexRecordOption::Basic);
-        let reader = index.reader().unwrap();
-        assert_eq!(term_query.count(&*reader.searcher()).unwrap(), 1);
+        assert_eq!(term_query.count(&index.searcher().unwrap()).unwrap(), 1);
     }
 
     #[test]
@@ -159,7 +158,7 @@ mod tests {
         index_writer.commit()?;
         let term_a = Term::from_field_text(text_field, "a");
         let term_query = TermQuery::new(term_a, IndexRecordOption::Basic);
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         let term_weight = term_query.weight(&searcher, false)?;
         let mut term_scorer = term_weight.scorer(searcher.segment_reader(0u32), 1.0)?;
         assert_eq!(term_scorer.doc(), 0u32);
@@ -194,7 +193,7 @@ mod tests {
         index_writer.commit()?;
         let term_a = Term::from_field_text(text_field, "a");
         let term_query = TermQuery::new(term_a, IndexRecordOption::Basic);
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         {
             let explanation = term_query.explain(&searcher, DocAddress::new(0u32, 1u32))?;
             assert_nearly_equals!(explanation.value(), 0.6931472);

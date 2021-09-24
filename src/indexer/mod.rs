@@ -4,7 +4,6 @@ pub mod doc_id_mapping;
 mod doc_opstamp_mapping;
 pub mod index_writer;
 mod log_merge_policy;
-mod merge_operation;
 pub mod merge_policy;
 pub mod merger;
 mod merger_sorted_index_test;
@@ -20,7 +19,6 @@ mod stamper;
 
 pub use self::index_writer::IndexWriter;
 pub use self::log_merge_policy::LogMergePolicy;
-pub use self::merge_operation::MergeOperation;
 pub use self::merge_policy::{MergeCandidate, MergePolicy, NoMergePolicy};
 pub use self::prepared_commit::PreparedCommit;
 pub use self::segment_entry::SegmentEntry;

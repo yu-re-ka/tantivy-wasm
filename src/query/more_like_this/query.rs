@@ -245,8 +245,7 @@ mod tests {
     #[test]
     fn test_more_like_this_query() {
         let index = create_test_index();
-        let reader = index.reader().unwrap();
-        let searcher = reader.searcher();
+        let searcher = index.searcher().unwrap();
 
         // search base 1st doc with words [sea, and] skipping [old]
         let query = MoreLikeThisQuery::builder()

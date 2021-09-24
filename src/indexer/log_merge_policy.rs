@@ -161,8 +161,7 @@ mod tests {
             .searchable_segment_ids()
             .expect("Searchable segments failed.");
 
-        let reader = index.reader().unwrap();
-        let searcher = reader.searcher();
+        let searcher = index.searcher().unwrap();
         let segment_readers = searcher.segment_readers();
         for segment in segment_readers {
             if segment.num_docs() > 2 {

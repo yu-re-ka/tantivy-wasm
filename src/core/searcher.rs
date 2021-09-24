@@ -1,5 +1,4 @@
 use crate::collector::Collector;
-use crate::core::Executor;
 
 use crate::core::SegmentReader;
 use crate::query::Query;
@@ -112,37 +111,14 @@ impl Searcher {
         query: &dyn Query,
         collector: &C,
     ) -> crate::Result<C::Fruit> {
-        let executor = self.index.search_executor();
-        self.search_with_executor(query, collector, executor)
-    }
-
-    /// Same as [`search(...)`](#method.search) but multithreaded.
-    ///
-    /// The current implementation is rather naive :
-    /// multithreading is by splitting search into as many task
-    /// as there are segments.
-    ///
-    /// It is powerless at making search faster if your index consists in
-    /// one large segment.
-    ///
-    /// Also, keep in my multithreading a single query on several
-    /// threads will not improve your throughput. It can actually
-    /// hurt it. It will however, decrease the average response time.
-    pub fn search_with_executor<C: Collector>(
-        &self,
-        query: &dyn Query,
-        collector: &C,
-        executor: &Executor,
-    ) -> crate::Result<C::Fruit> {
         let scoring_enabled = collector.requires_scoring();
         let weight = query.weight(self, scoring_enabled)?;
         let segment_readers = self.segment_readers();
-        let fruits = executor.map(
+        let fruits = segment_readers.iter().enumerate().map(
             |(segment_ord, segment_reader)| {
                 collector.collect_segment(weight.as_ref(), segment_ord as u32, segment_reader)
             },
-            segment_readers.iter().enumerate(),
-        )?;
+        ).collect::<crate::Result<_>>()?;
         collector.merge_fruits(fruits)
     }
 

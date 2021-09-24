@@ -1,4 +1,3 @@
-mod executor;
 pub mod index;
 mod index_meta;
 mod inverted_index_reader;
@@ -8,7 +7,6 @@ mod segment_component;
 mod segment_id;
 mod segment_reader;
 
-pub use self::executor::Executor;
 pub use self::index::{Index, IndexBuilder};
 pub use self::index_meta::{
     IndexMeta, IndexSettings, IndexSortByField, Order, SegmentMeta, SegmentMetaInventory,

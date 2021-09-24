@@ -110,10 +110,6 @@ impl TermHashMap {
         QuadraticProbing::compute(hash as usize, self.mask)
     }
 
-    pub fn mem_usage(&self) -> usize {
-        self.table.len() * mem::size_of::<KeyValue>()
-    }
-
     fn is_saturated(&self) -> bool {
         self.table.len() < self.occupied.len() * 3
     }

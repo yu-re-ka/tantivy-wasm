@@ -97,7 +97,7 @@ mod tests {
         let mut index_writer = index.writer_for_tests()?;
         index_writer.add_document(doc!(facet_field=>Facet::from_text("/a/b").unwrap()));
         index_writer.commit()?;
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         let facet_reader = searcher
             .segment_reader(0u32)
             .facet_reader(facet_field)
@@ -120,7 +120,7 @@ mod tests {
         let mut index_writer = index.writer_for_tests()?;
         index_writer.add_document(doc!(facet_field=>Facet::from_text("/a/b").unwrap()));
         index_writer.commit()?;
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         let facet_reader = searcher
             .segment_reader(0u32)
             .facet_reader(facet_field)
@@ -143,7 +143,7 @@ mod tests {
         let mut index_writer = index.writer_for_tests()?;
         index_writer.add_document(doc!(facet_field=>Facet::from_text("/a/b").unwrap()));
         index_writer.commit()?;
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         let facet_reader = searcher
             .segment_reader(0u32)
             .facet_reader(facet_field)
@@ -166,7 +166,7 @@ mod tests {
         let mut index_writer = index.writer_for_tests()?;
         index_writer.add_document(doc!(facet_field=>Facet::from_text("/a/b").unwrap()));
         index_writer.commit()?;
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         let facet_reader = searcher
             .segment_reader(0u32)
             .facet_reader(facet_field)
@@ -190,7 +190,7 @@ mod tests {
         index_writer.add_document(doc!(facet_field=>Facet::from_text("/a/b").unwrap()));
         index_writer.add_document(Document::default());
         index_writer.commit()?;
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         let facet_reader = searcher
             .segment_reader(0u32)
             .facet_reader(facet_field)
@@ -213,7 +213,7 @@ mod tests {
         index_writer.add_document(Document::default());
         index_writer.add_document(Document::default());
         index_writer.commit()?;
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         let facet_reader = searcher
             .segment_reader(0u32)
             .facet_reader(facet_field)

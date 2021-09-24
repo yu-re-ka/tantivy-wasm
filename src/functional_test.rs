@@ -30,11 +30,10 @@ fn test_functional_store() -> crate::Result<()> {
     let schema = schema_builder.build();
 
     let index = Index::create_in_ram(schema);
-    let reader = index.reader()?;
 
     let mut rng = thread_rng();
 
-    let mut index_writer = index.writer_with_num_threads(3, 12_000_000)?;
+    let mut index_writer = index.writer(12_000_000)?;
 
     let mut doc_set: Vec<u64> = Vec::new();
 
@@ -53,8 +52,7 @@ fn test_functional_store() -> crate::Result<()> {
             doc_id += 1;
         }
         index_writer.commit()?;
-        reader.reload()?;
-        let searcher = reader.searcher();
+        let searcher = index.searcher()?;
         check_index_content(&searcher, &doc_set)?;
     }
     Ok(())
@@ -91,11 +89,9 @@ fn test_functional_indexing_sorted() -> crate::Result<()> {
     });
     let index = index_builder.create_from_tempdir().unwrap();
 
-    let reader = index.reader()?;
-
     let mut rng = thread_rng();
 
-    let mut index_writer = index.writer_with_num_threads(3, 120_000_000)?;
+    let mut index_writer = index.writer(120_000_000)?;
 
     let mut committed_docs: HashSet<u64> = HashSet::new();
     let mut uncommitted_docs: HashSet<u64> = HashSet::new();
@@ -106,8 +102,7 @@ fn test_functional_indexing_sorted() -> crate::Result<()> {
             index_writer.commit()?;
             committed_docs.extend(&uncommitted_docs);
             uncommitted_docs.clear();
-            reader.reload()?;
-            let searcher = reader.searcher();
+            let searcher = index.searcher()?;
             // check that everything is correct.
             check_index_content(
                 &searcher,
@@ -168,11 +163,10 @@ fn test_functional_indexing_unsorted() -> crate::Result<()> {
     let schema = schema_builder.build();
 
     let index = Index::create_from_tempdir(schema)?;
-    let reader = index.reader()?;
 
     let mut rng = thread_rng();
 
-    let mut index_writer = index.writer_with_num_threads(3, 120_000_000)?;
+    let mut index_writer = index.writer(120_000_000)?;
 
     let mut committed_docs: HashSet<u64> = HashSet::new();
     let mut uncommitted_docs: HashSet<u64> = HashSet::new();
@@ -183,8 +177,7 @@ fn test_functional_indexing_unsorted() -> crate::Result<()> {
             index_writer.commit()?;
             committed_docs.extend(&uncommitted_docs);
             uncommitted_docs.clear();
-            reader.reload()?;
-            let searcher = reader.searcher();
+            let searcher = index.searcher()?;
             // check that everything is correct.
             check_index_content(
                 &searcher,

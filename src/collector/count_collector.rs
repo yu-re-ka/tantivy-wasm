@@ -26,8 +26,7 @@ use crate::SegmentReader;
 /// index_writer.add_document(doc!(title => "The Diary of a Young Girl"));
 /// assert!(index_writer.commit().is_ok());
 ///
-/// let reader = index.reader().unwrap();
-/// let searcher = reader.searcher();
+/// let searcher = index.searcher()?;
 ///
 /// // Here comes the important part
 /// let query_parser = QueryParser::for_index(&index, vec![title]);

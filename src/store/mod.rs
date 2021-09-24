@@ -54,8 +54,6 @@ mod compression_snap;
 #[cfg(test)]
 pub mod tests {
 
-    use futures::executor::block_on;
-
     use super::*;
     use crate::fastfield::DeleteBitSet;
     use crate::schema::{self, FieldValue, TextFieldIndexing, STORED, TEXT};
@@ -227,7 +225,7 @@ pub mod tests {
             assert!(index_writer.commit().is_ok());
         }
 
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         let reader = searcher.segment_reader(0);
         let store = reader.get_store_reader().unwrap();
         for doc in store.iter(reader.delete_bitset()) {
@@ -264,7 +262,7 @@ pub mod tests {
             assert!(index_writer.commit().is_ok());
         }
         assert_eq!(
-            index.reader().unwrap().searcher().segment_readers()[0]
+            index.searcher().unwrap().segment_readers()[0]
                 .get_store_reader()
                 .unwrap()
                 .compressor(),
@@ -279,11 +277,10 @@ pub mod tests {
                 .searchable_segment_ids()
                 .expect("Searchable segments failed.");
             let mut index_writer = index.writer_for_tests().unwrap();
-            assert!(block_on(index_writer.merge(&segment_ids)).is_ok());
-            assert!(index_writer.wait_merging_threads().is_ok());
+            assert!(index_writer.merge(&segment_ids).is_ok());
         }
 
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         assert_eq!(searcher.segment_readers().len(), 1);
         let reader = searcher.segment_readers().iter().last().unwrap();
         let store = reader.get_store_reader().unwrap();
@@ -329,11 +326,10 @@ pub mod tests {
                 .searchable_segment_ids()
                 .expect("Searchable segments failed.");
             let mut index_writer = index.writer_for_tests().unwrap();
-            assert!(block_on(index_writer.merge(&segment_ids)).is_ok());
-            assert!(index_writer.wait_merging_threads().is_ok());
+            assert!(index_writer.merge(&segment_ids).is_ok());
         }
 
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         assert_eq!(searcher.segment_readers().len(), 1);
         let reader = searcher.segment_readers().iter().last().unwrap();
         let store = reader.get_store_reader().unwrap();

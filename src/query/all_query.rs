@@ -95,8 +95,7 @@ mod tests {
     #[test]
     fn test_all_query() {
         let index = create_test_index();
-        let reader = index.reader().unwrap();
-        let searcher = reader.searcher();
+        let searcher = index.searcher().unwrap();
         let weight = AllQuery.weight(&searcher, false).unwrap();
         {
             let reader = searcher.segment_reader(0);
@@ -117,8 +116,7 @@ mod tests {
     #[test]
     fn test_all_query_with_boost() {
         let index = create_test_index();
-        let reader = index.reader().unwrap();
-        let searcher = reader.searcher();
+        let searcher = index.searcher().unwrap();
         let weight = AllQuery.weight(&searcher, false).unwrap();
         let reader = searcher.segment_reader(0);
         {

@@ -1,3 +1,9 @@
+Original readme below...
+
+This is a fork of tantivy with modifications to run on the wasm32-unknown-unknown target, with read and write capabilities.
+It removes any kind of multi-threading and runs all workloads on one thread.
+I assume you would make all calls from a WebWorker to prevent blocking the main thread.
+
 
 [![Docs](https://docs.rs/tantivy/badge.svg)](https://docs.rs/crate/tantivy/)
 [![Build Status](https://github.com/tantivy-search/tantivy/actions/workflows/test.yml/badge.svg)](https://github.com/tantivy-search/tantivy/actions/workflows/test.yml)

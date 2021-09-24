@@ -99,15 +99,14 @@ where
 /// let schema = schema_builder.build();
 /// let index = Index::create_in_ram(schema);
 ///
-/// let mut index_writer = index.writer_with_num_threads(1, 10_000_000).unwrap();
+/// let mut index_writer = index.writer(10_000_000).unwrap();
 /// index_writer.add_document(doc!(title => "The Name of the Wind"));
 /// index_writer.add_document(doc!(title => "The Diary of Muadib"));
 /// index_writer.add_document(doc!(title => "A Dairy Cow"));
 /// index_writer.add_document(doc!(title => "The Diary of a Young Girl"));
 /// assert!(index_writer.commit().is_ok());
 ///
-/// let reader = index.reader().unwrap();
-/// let searcher = reader.searcher();
+/// let searcher = index.searcher()?;
 ///
 /// let query_parser = QueryParser::for_index(&index, vec![title]);
 /// let query = query_parser.parse_query("diary").unwrap();
@@ -185,7 +184,7 @@ impl TopDocs {
     /// let schema = schema_builder.build();
     /// let index = Index::create_in_ram(schema);
     ///
-    /// let mut index_writer = index.writer_with_num_threads(1, 10_000_000).unwrap();
+    /// let mut index_writer = index.writer(10_000_000).unwrap();
     /// index_writer.add_document(doc!(title => "The Name of the Wind"));
     /// index_writer.add_document(doc!(title => "The Diary of Muadib"));
     /// index_writer.add_document(doc!(title => "A Dairy Cow"));
@@ -193,8 +192,7 @@ impl TopDocs {
     /// index_writer.add_document(doc!(title => "The Diary of Lena Mukhina"));
     /// assert!(index_writer.commit().is_ok());
     ///
-    /// let reader = index.reader().unwrap();
-    /// let searcher = reader.searcher();
+    /// let searcher = index.searcher()?;
     ///
     /// let query_parser = QueryParser::for_index(&index, vec![title]);
     /// let query = query_parser.parse_query("diary").unwrap();
@@ -233,15 +231,14 @@ impl TopDocs {
     /// #   let schema = schema_builder.build();
     /// #
     /// #   let index = Index::create_in_ram(schema);
-    /// #   let mut index_writer = index.writer_with_num_threads(1, 10_000_000)?;
+    /// #   let mut index_writer = index.writer(10_000_000)?;
     /// #   index_writer.add_document(doc!(title => "The Name of the Wind", rating => 92u64));
     /// #   index_writer.add_document(doc!(title => "The Diary of Muadib", rating => 97u64));
     /// #   index_writer.add_document(doc!(title => "A Dairy Cow", rating => 63u64));
     /// #   index_writer.add_document(doc!(title => "The Diary of a Young Girl", rating => 80u64));
     /// #   assert!(index_writer.commit().is_ok());
-    /// #   let reader = index.reader()?;
     /// #   let query = QueryParser::for_index(&index, vec![title]).parse_query("diary")?;
-    /// #   let top_docs = docs_sorted_by_rating(&reader.searcher(), &query, rating)?;
+    /// #   let top_docs = docs_sorted_by_rating(&index.searcher()?, &query, rating)?;
     /// #   assert_eq!(top_docs,
     /// #            vec![(97u64, DocAddress::new(0u32, 1)),
     /// #                 (80u64, DocAddress::new(0u32, 3))]);
@@ -315,13 +312,12 @@ impl TopDocs {
     /// #   let schema = schema_builder.build();
     /// #
     /// #   let index = Index::create_in_ram(schema);
-    /// #   let mut index_writer = index.writer_with_num_threads(1, 10_000_000)?;
+    /// #   let mut index_writer = index.writer(10_000_000)?;
     /// #   index_writer.add_document(doc!(title => "MadCow Inc.", rating => 92_000_000i64));
     /// #   index_writer.add_document(doc!(title => "Zozo Cow KKK", rating => 119_000_000i64));
     /// #   index_writer.add_document(doc!(title => "Declining Cow", rating => -63_000_000i64));
     /// #   assert!(index_writer.commit().is_ok());
-    /// #   let reader = index.reader()?;
-    /// #   let top_docs = docs_sorted_by_revenue(&reader.searcher(), &AllQuery, rating)?;
+    /// #   let top_docs = docs_sorted_by_revenue(&index.searcher()?, &AllQuery, rating)?;
     /// #   assert_eq!(top_docs,
     /// #            vec![(119_000_000i64, DocAddress::new(0, 1)),
     /// #                 (92_000_000i64, DocAddress::new(0, 0))]);
@@ -414,7 +410,7 @@ impl TopDocs {
     /// fn create_index() -> tantivy::Result<Index> {
     ///   let schema = create_schema();
     ///   let index = Index::create_in_ram(schema);
-    ///   let mut index_writer = index.writer_with_num_threads(1, 10_000_000)?;
+    ///   let mut index_writer = index.writer(10_000_000)?;
     ///   let product_name = index.schema().get_field("product_name").unwrap();
     ///   let popularity: Field = index.schema().get_field("popularity").unwrap();
     ///   index_writer.add_document(doc!(product_name => "The Diary of Muadib", popularity => 1u64));
@@ -457,8 +453,7 @@ impl TopDocs {
     ///                 popularity_boost_score * original_score
     ///             }
     ///           });
-    /// let reader = index.reader().unwrap();
-    /// let searcher = reader.searcher();
+    /// let searcher = index.searcher()?;
     /// // ... and here are our documents. Note this is a simple vec.
     /// // The `Score` in the pair is our tweaked score.
     /// let resulting_docs: Vec<(Score, DocAddress)> =
@@ -522,7 +517,7 @@ impl TopDocs {
     /// # fn main() -> tantivy::Result<()> {
     /// #   let schema = create_schema();
     /// #   let index = Index::create_in_ram(schema);
-    /// #   let mut index_writer = index.writer_with_num_threads(1, 10_000_000)?;
+    /// #   let mut index_writer = index.writer(10_000_000)?;
     /// #   let product_name = index.schema().get_field("product_name").unwrap();
     /// #
     /// let popularity: Field = index.schema().get_field("popularity").unwrap();
@@ -569,8 +564,7 @@ impl TopDocs {
     ///                 (boosted, popularity)
     ///             }
     ///           });
-    /// # let reader = index.reader()?;
-    /// # let searcher = reader.searcher();
+    /// # let searcher = index.searcher()?;
     /// // ... and here are our documents. Note this is a simple vec.
     /// // The `Score` in the pair is our tweaked score.
     /// let resulting_docs: Vec<((u64, u64), DocAddress)> =
@@ -720,7 +714,7 @@ mod tests {
         let index = Index::create_in_ram(schema);
         {
             // writing the segment
-            let mut index_writer = index.writer_with_num_threads(1, 10_000_000).unwrap();
+            let mut index_writer = index.writer(10_000_000).unwrap();
             index_writer.add_document(doc!(text_field=>"Hello happy tax payer."));
             index_writer.add_document(doc!(text_field=>"Droopy says hello happy tax payer"));
             index_writer.add_document(doc!(text_field=>"I like Droopy"));
@@ -743,9 +737,8 @@ mod tests {
         let query_parser = QueryParser::for_index(&index, vec![field]);
         let text_query = query_parser.parse_query("droopy tax").unwrap();
         let score_docs: Vec<(Score, DocAddress)> = index
-            .reader()
-            .unwrap()
             .searcher()
+            .unwrap()
             .search(&text_query, &TopDocs::with_limit(4))
             .unwrap();
         assert_results_equals(
@@ -765,9 +758,8 @@ mod tests {
         let query_parser = QueryParser::for_index(&index, vec![field]);
         let text_query = query_parser.parse_query("droopy tax").unwrap();
         let score_docs: Vec<(Score, DocAddress)> = index
-            .reader()
-            .unwrap()
             .searcher()
+            .unwrap()
             .search(&text_query, &TopDocs::with_limit(4).and_offset(2))
             .unwrap();
         assert_results_equals(&score_docs[..], &[(0.48527452, DocAddress::new(0, 0))]);
@@ -780,9 +772,8 @@ mod tests {
         let query_parser = QueryParser::for_index(&index, vec![field]);
         let text_query = query_parser.parse_query("droopy tax").unwrap();
         let score_docs: Vec<(Score, DocAddress)> = index
-            .reader()
-            .unwrap()
             .searcher()
+            .unwrap()
             .search(&text_query, &TopDocs::with_limit(2))
             .unwrap();
         assert_results_equals(
@@ -801,9 +792,8 @@ mod tests {
         let query_parser = QueryParser::for_index(&index, vec![field]);
         let text_query = query_parser.parse_query("droopy tax").unwrap();
         let score_docs: Vec<(Score, DocAddress)> = index
-            .reader()
-            .unwrap()
             .searcher()
+            .unwrap()
             .search(&text_query, &TopDocs::with_limit(2).and_offset(1))
             .unwrap();
         assert_results_equals(
@@ -820,7 +810,7 @@ mod tests {
         let index = make_index();
 
         // using AllQuery to get a constant score
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
 
         let page_1 = searcher.search(&AllQuery, &TopDocs::with_limit(2)).unwrap();
 
@@ -867,7 +857,7 @@ mod tests {
                 size => 16u64,
             ));
         });
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
 
         let top_collector = TopDocs::with_limit(4).order_by_u64_field(size);
         let top_docs: Vec<(u64, DocAddress)> = searcher.search(&query, &top_collector).unwrap();
@@ -901,7 +891,7 @@ mod tests {
             birthday => mr_birthday
         ));
         index_writer.commit()?;
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         let top_collector = TopDocs::with_limit(3).order_by_fast_field(birthday);
         let top_docs: Vec<(crate::DateTime, DocAddress)> =
             searcher.search(&AllQuery, &top_collector)?;
@@ -932,7 +922,7 @@ mod tests {
             altitude =>  40i64,
         ));
         index_writer.commit()?;
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         let top_collector = TopDocs::with_limit(3).order_by_fast_field(altitude);
         let top_docs: Vec<(i64, DocAddress)> = searcher.search(&AllQuery, &top_collector)?;
         assert_eq!(
@@ -962,7 +952,7 @@ mod tests {
             altitude =>  40f64,
         ));
         index_writer.commit()?;
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         let top_collector = TopDocs::with_limit(3).order_by_fast_field(altitude);
         let top_docs: Vec<(f64, DocAddress)> = searcher.search(&AllQuery, &top_collector)?;
         assert_eq!(
@@ -988,7 +978,7 @@ mod tests {
                 size => 12u64,
             ));
         });
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         let top_collector = TopDocs::with_limit(4).order_by_u64_field(Field::from_field_id(2));
         let segment_reader = searcher.segment_reader(0u32);
         top_collector
@@ -1005,7 +995,7 @@ mod tests {
         let mut index_writer = index.writer_for_tests()?;
         index_writer.add_document(doc!(size=>1u64));
         index_writer.commit()?;
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         let segment = searcher.segment_reader(0);
         let top_collector = TopDocs::with_limit(4).order_by_u64_field(size);
         let err = top_collector.for_segment(0, segment).err().unwrap();
@@ -1022,7 +1012,7 @@ mod tests {
         let mut index_writer = index.writer_for_tests()?;
         index_writer.add_document(doc!(size=>1u64));
         index_writer.commit()?;
-        let searcher = index.reader()?.searcher();
+        let searcher = index.searcher()?;
         let segment = searcher.segment_reader(0);
         let top_collector = TopDocs::with_limit(4).order_by_fast_field::<i64>(size);
         let err = top_collector.for_segment(0, segment).err().unwrap();
@@ -1042,9 +1032,8 @@ mod tests {
             move |_segment_reader: &SegmentReader| move |doc: DocId, _original_score: Score| doc,
         );
         let score_docs: Vec<(u32, DocAddress)> = index
-            .reader()
-            .unwrap()
             .searcher()
+            .unwrap()
             .search(&text_query, &collector)
             .unwrap();
 
@@ -1064,9 +1053,8 @@ mod tests {
             .and_offset(1)
             .custom_score(move |_segment_reader: &SegmentReader| move |doc: DocId| doc);
         let score_docs: Vec<(u32, DocAddress)> = index
-            .reader()
-            .unwrap()
             .searcher()
+            .unwrap()
             .search(&text_query, &collector)
             .unwrap();
 
@@ -1083,7 +1071,7 @@ mod tests {
         mut doc_adder: impl FnMut(&mut IndexWriter),
     ) -> (Index, Box<dyn Query>) {
         let index = Index::create_in_ram(schema);
-        let mut index_writer = index.writer_with_num_threads(1, 10_000_000).unwrap();
+        let mut index_writer = index.writer(10_000_000).unwrap();
         doc_adder(&mut index_writer);
         index_writer.commit().unwrap();
         let query_parser = QueryParser::for_index(&index, vec![query_field]);

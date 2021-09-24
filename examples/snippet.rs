@@ -11,13 +11,8 @@ use tantivy::collector::TopDocs;
 use tantivy::query::QueryParser;
 use tantivy::schema::*;
 use tantivy::{doc, Index, Snippet, SnippetGenerator};
-use tempfile::TempDir;
 
 fn main() -> tantivy::Result<()> {
-    // Let's create a temporary directory for the
-    // sake of this example
-    let index_path = TempDir::new()?;
-
     // # Defining the schema
     let mut schema_builder = Schema::builder();
     let title = schema_builder.add_text_field("title", TEXT | STORED);
@@ -25,7 +20,7 @@ fn main() -> tantivy::Result<()> {
     let schema = schema_builder.build();
 
     // # Indexing documents
-    let index = Index::create_in_dir(&index_path, schema)?;
+    let index = Index::create_in_ram(schema);
 
     let mut index_writer = index.writer(50_000_000)?;
 
@@ -44,8 +39,7 @@ fn main() -> tantivy::Result<()> {
     // ...
     index_writer.commit()?;
 
-    let reader = index.reader()?;
-    let searcher = reader.searcher();
+    let searcher = index.searcher()?;
     let query_parser = QueryParser::for_index(&index, vec![title, body]);
     let query = query_parser.parse_query("sycamore spring")?;
 

@@ -109,7 +109,7 @@ mod tests {
         index_writer.add_document(doc!(facet_field => Facet::from("/category/cat2")));
         index_writer.add_document(doc!(facet_field => Facet::from("/category/cat3")));
         index_writer.commit().expect("Commit failed");
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         let segment_reader = searcher.segment_reader(0);
         let mut facet_reader = segment_reader.facet_reader(facet_field).unwrap();
 
@@ -167,7 +167,7 @@ mod tests {
         index_writer.add_document(doc!(item_field => 6i64, item_field => 3i64));
         index_writer.add_document(doc!(item_field => 4i64));
         index_writer.commit().expect("Commit failed");
-        let searcher = index.reader().unwrap().searcher();
+        let searcher = index.searcher().unwrap();
         let segment_reader = searcher.segment_reader(0);
         let field_reader = segment_reader.fast_fields().i64s(item_field).unwrap();
 

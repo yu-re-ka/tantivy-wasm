@@ -42,7 +42,6 @@ mod tests {
 
     use std::io;
 
-    use futures::executor::block_on;
     use proptest::strategy::{BoxedStrategy, Strategy};
 
     use crate::directory::OwnedBytes;
@@ -147,9 +146,8 @@ mod tests {
         index_writer.delete_term(Term::from_field_text(text, "testb"));
         index_writer.commit()?;
         let segment_ids = index.searchable_segment_ids()?;
-        block_on(index_writer.merge(&segment_ids))?;
-        let reader = index.reader()?;
-        let searcher = reader.searcher();
+        index_writer.merge(&segment_ids)?;
+        let searcher = index.searcher()?;
         assert_eq!(searcher.num_docs(), 30);
         for i in 0..searcher.num_docs() as u32 {
             let _doc = searcher.doc(DocAddress::new(0u32, i))?;

@@ -13,8 +13,7 @@ use tantivy::collector::{Count, TopDocs};
 use tantivy::query::TermQuery;
 use tantivy::schema::*;
 use tantivy::tokenizer::{PreTokenizedString, SimpleTokenizer, Token, Tokenizer};
-use tantivy::{doc, Index, ReloadPolicy};
-use tempfile::TempDir;
+use tantivy::{doc, Index};
 
 fn pre_tokenize_text(text: &str) -> Vec<Token> {
     let mut token_stream = SimpleTokenizer.token_stream(text);
@@ -26,8 +25,6 @@ fn pre_tokenize_text(text: &str) -> Vec<Token> {
 }
 
 fn main() -> tantivy::Result<()> {
-    let index_path = TempDir::new()?;
-
     let mut schema_builder = Schema::builder();
 
     schema_builder.add_text_field("title", TEXT | STORED);
@@ -35,7 +32,7 @@ fn main() -> tantivy::Result<()> {
 
     let schema = schema_builder.build();
 
-    let index = Index::create_in_dir(&index_path, schema.clone())?;
+    let index = Index::create_in_ram(schema.clone());
 
     let mut index_writer = index.writer(50_000_000)?;
 
@@ -91,12 +88,7 @@ fn main() -> tantivy::Result<()> {
 
     // ... and now is the time to query our index
 
-    let reader = index
-        .reader_builder()
-        .reload_policy(ReloadPolicy::OnCommit)
-        .try_into()?;
-
-    let searcher = reader.searcher();
+    let searcher = index.searcher()?;
 
     // We want to get documents with token "Man", we will use TermQuery to do it
     // Using PreTokenizedString means the tokens are stored as is avoiding stemming

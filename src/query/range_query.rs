@@ -47,7 +47,7 @@ fn map_bound<TFrom, TTo, Transform: Fn(&TFrom) -> TTo>(
 /// let schema = schema_builder.build();
 ///
 /// let index = Index::create_in_ram(schema);
-/// let mut index_writer = index.writer_with_num_threads(1, 10_000_000)?;
+/// let mut index_writer = index.writer(10_000_000)?;
 /// for year in 1950u64..2017u64 {
 ///     let num_docs_within_year = 10 + (year - 1950) * (year - 1950);
 ///     for _ in 0..num_docs_within_year {
@@ -56,8 +56,7 @@ fn map_bound<TFrom, TTo, Transform: Fn(&TFrom) -> TTo>(
 /// }
 /// index_writer.commit()?;
 ///
-/// let reader = index.reader()?;
-/// let searcher = reader.searcher();
+/// let searcher = index.searcher()?;
 /// let docs_in_the_sixties = RangeQuery::new_u64(year_field, 1960..1970);
 /// let num_60s_books = searcher.search(&docs_in_the_sixties, &Count)?;
 /// assert_eq!(num_60s_books, 2285);
@@ -354,8 +353,7 @@ mod tests {
             }
             index_writer.commit().unwrap();
         }
-        let reader = index.reader().unwrap();
-        let searcher = reader.searcher();
+        let searcher = index.searcher().unwrap();
 
         let docs_in_the_sixties = RangeQuery::new_u64(year_field, 1960u64..1970u64);
 
@@ -375,7 +373,7 @@ mod tests {
 
         let index = Index::create_in_ram(schema);
         {
-            let mut index_writer = index.writer_with_num_threads(2, 6_000_000).unwrap();
+            let mut index_writer = index.writer(6_000_000).unwrap();
 
             for i in 1..100 {
                 let mut doc = Document::new();
@@ -389,8 +387,7 @@ mod tests {
 
             index_writer.commit().unwrap();
         }
-        let reader = index.reader().unwrap();
-        let searcher = reader.searcher();
+        let searcher = index.searcher().unwrap();
         let count_multiples =
             |range_query: RangeQuery| searcher.search(&range_query, &Count).unwrap();
 
@@ -432,7 +429,7 @@ mod tests {
 
         let index = Index::create_in_ram(schema);
         {
-            let mut index_writer = index.writer_with_num_threads(2, 6_000_000).unwrap();
+            let mut index_writer = index.writer(6_000_000).unwrap();
 
             for i in 1..100 {
                 let mut doc = Document::new();
@@ -446,8 +443,7 @@ mod tests {
 
             index_writer.commit().unwrap();
         }
-        let reader = index.reader().unwrap();
-        let searcher = reader.searcher();
+        let searcher = index.searcher().unwrap();
         let count_multiples =
             |range_query: RangeQuery| searcher.search(&range_query, &Count).unwrap();
 
@@ -496,8 +492,7 @@ mod tests {
           year => 1990_i64
         ));
         index_writer.commit()?;
-        let reader = index.reader()?;
-        let searcher = reader.searcher();
+        let searcher = index.searcher()?;
         let query_parser = QueryParser::for_index(&index, vec![title]);
         let query = query_parser.parse_query("hemoglobin AND year:[1970 TO 1990]")?;
         let top_docs = searcher.search(&query, &TopDocs::with_limit(10))?;

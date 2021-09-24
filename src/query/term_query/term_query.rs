@@ -44,8 +44,7 @@ use std::fmt;
 ///     ));
 ///     index_writer.commit()?;
 /// }
-/// let reader = index.reader()?;
-/// let searcher = reader.searcher();
+/// let searcher = index.searcher()?;
 /// let query = TermQuery::new(
 ///     Term::from_field_text(title, "diary"),
 ///     IndexRecordOption::Basic,

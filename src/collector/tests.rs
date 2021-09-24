@@ -33,7 +33,7 @@ pub fn test_filter_collector() {
     let schema = schema_builder.build();
     let index = Index::create_in_ram(schema);
 
-    let mut index_writer = index.writer_with_num_threads(1, 10_000_000).unwrap();
+    let mut index_writer = index.writer(10_000_000).unwrap();
     index_writer.add_document(doc!(title => "The Name of the Wind", price => 30_200u64, date => DateTime::from_str("1898-04-09T00:00:00+00:00").unwrap()));
     index_writer.add_document(doc!(title => "The Diary of Muadib", price => 29_240u64, date => DateTime::from_str("2020-04-09T00:00:00+00:00").unwrap()));
     index_writer.add_document(doc!(title => "The Diary of Anne Frank", price => 18_240u64, date => DateTime::from_str("2019-04-20T00:00:00+00:00").unwrap()));
@@ -41,8 +41,7 @@ pub fn test_filter_collector() {
     index_writer.add_document(doc!(title => "The Diary of a Young Girl", price => 20_120u64, date => DateTime::from_str("2018-04-09T00:00:00+00:00").unwrap()));
     assert!(index_writer.commit().is_ok());
 
-    let reader = index.reader().unwrap();
-    let searcher = reader.searcher();
+    let searcher = index.searcher().unwrap();
 
     let query_parser = QueryParser::for_index(&index, vec![title]);
     let query = query_parser.parse_query("diary").unwrap();
@@ -270,14 +269,14 @@ impl SegmentCollector for BytesFastFieldSegmentCollector {
     }
 }
 
-fn make_test_searcher() -> crate::Result<crate::LeasedItem<Searcher>> {
+fn make_test_searcher() -> crate::Result<Searcher> {
     let schema = Schema::builder().build();
     let index = Index::create_in_ram(schema);
     let mut index_writer = index.writer_for_tests()?;
     index_writer.add_document(Document::default());
     index_writer.add_document(Document::default());
     index_writer.commit()?;
-    Ok(index.reader()?.searcher())
+    Ok(index.searcher().unwrap())
 }
 
 #[test]

@@ -15,14 +15,9 @@
 use tantivy::collector::TopDocs;
 use tantivy::query::QueryParser;
 use tantivy::schema::*;
-use tantivy::{doc, Index, ReloadPolicy};
-use tempfile::TempDir;
+use tantivy::{doc, Index};
 
 fn main() -> tantivy::Result<()> {
-    // Let's create a temporary directory for the
-    // sake of this example
-    let index_path = TempDir::new()?;
-
     // # Defining the schema
     //
     // The Tantivy index requires a very strict schema.
@@ -65,7 +60,7 @@ fn main() -> tantivy::Result<()> {
     //
     // This will actually just save a meta.json
     // with our schema in the directory.
-    let index = Index::create_in_dir(&index_path, schema.clone())?;
+    let index = Index::create_in_ram(schema.clone());
 
     // To insert a document we will need an index writer.
     // There must be only one writer at a time.
@@ -141,32 +136,6 @@ fn main() -> tantivy::Result<()> {
     // This call is blocking.
     index_writer.commit()?;
 
-    // If `.commit()` returns correctly, then all of the
-    // documents that have been added are guaranteed to be
-    // persistently indexed.
-    //
-    // In the scenario of a crash or a power failure,
-    // tantivy behaves as if it has rolled back to its last
-    // commit.
-
-    // # Searching
-    //
-    // ### Searcher
-    //
-    // A reader is required first in order to search an index.
-    // It acts as a `Searcher` pool that reloads itself,
-    // depending on a `ReloadPolicy`.
-    //
-    // For a search server you will typically create one reader for the entire lifetime of your
-    // program, and acquire a new searcher for every single request.
-    //
-    // In the code below, we rely on the 'ON_COMMIT' policy: the reader
-    // will reload the index automatically after each commit.
-    let reader = index
-        .reader_builder()
-        .reload_policy(ReloadPolicy::OnCommit)
-        .try_into()?;
-
     // We now need to acquire a searcher.
     //
     // A searcher points to a snapshotted, immutable version of the index.
@@ -175,11 +144,10 @@ fn main() -> tantivy::Result<()> {
     // one query. Using the same searcher ensures that all of these queries will run on the
     // same version of the index.
     //
-    // Acquiring a `searcher` is very cheap.
-    //
-    // You should acquire a searcher every time you start processing a request and
-    // and release it right after your query is finished.
-    let searcher = reader.searcher();
+    // Acquiring a `searcher` is expensive.
+    // For a search server you will typically create one searcher for the entire lifetime of your
+    // program, or until you expect the data to have changed.
+    let searcher = index.searcher()?;
 
     // ### Query
 
