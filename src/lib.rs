@@ -938,7 +938,8 @@ pub mod tests {
             );
         }
 
-        let segment_ids: Vec<SegmentId> = index.searcher()?
+        let segment_ids: Vec<SegmentId> = index
+            .searcher()?
             .segment_readers()
             .iter()
             .map(|reader| reader.segment_id())

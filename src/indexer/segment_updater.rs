@@ -12,10 +12,10 @@ use crate::indexer::index_writer::advance_deletes;
 use crate::indexer::merger::IndexMerger;
 use crate::indexer::segment_manager::SegmentsStatus;
 use crate::indexer::stamper::Stamper;
+use crate::indexer::MergeCandidate;
 use crate::indexer::SegmentEntry;
 use crate::indexer::SegmentSerializer;
 use crate::indexer::{DefaultMergePolicy, MergePolicy};
-use crate::indexer::MergeCandidate;
 use crate::schema::Schema;
 use crate::Opstamp;
 use std::borrow::BorrowMut;
@@ -259,10 +259,7 @@ impl SegmentUpdater {
         *self.merge_policy.write().unwrap() = arc_merge_policy;
     }
 
-    pub fn add_segment(
-        &self,
-        segment_entry: SegmentEntry,
-    ) -> crate::Result<()> {
+    pub fn add_segment(&self, segment_entry: SegmentEntry) -> crate::Result<()> {
         self.segment_manager.add_segment(segment_entry);
         self.consider_merge_options();
         Ok(())
@@ -337,11 +334,7 @@ impl SegmentUpdater {
         files
     }
 
-    pub fn commit(
-        &self,
-        opstamp: Opstamp,
-        payload: Option<String>,
-    ) -> crate::Result<()> {
+    pub fn commit(&self, opstamp: Opstamp, payload: Option<String>) -> crate::Result<()> {
         let segment_entries = self.purge_deletes(opstamp)?;
         self.segment_manager.commit(segment_entries);
         self.save_metas(opstamp, payload)?;
@@ -380,31 +373,16 @@ impl SegmentUpdater {
         target_opstamp: Opstamp,
         segment_ids: &[SegmentId],
     ) -> crate::Result<SegmentMeta> {
-        assert!(
-            !segment_ids.is_empty(),
-            "Segment_ids cannot be empty."
-        );
+        assert!(!segment_ids.is_empty(), "Segment_ids cannot be empty.");
 
-        let segment_entries: Vec<SegmentEntry> = self
-            .segment_manager
-            .start_merge(segment_ids)?;
+        let segment_entries: Vec<SegmentEntry> = self.segment_manager.start_merge(segment_ids)?;
 
         info!("Starting merge  - {:?}", segment_ids);
 
-        match merge(
-            &self.index,
-            segment_entries,
-            target_opstamp,
-        ) {
-            Ok(after_merge_segment_entry) => {
-                self.end_merge(segment_ids, after_merge_segment_entry)
-            }
+        match merge(&self.index, segment_entries, target_opstamp) {
+            Ok(after_merge_segment_entry) => self.end_merge(segment_ids, after_merge_segment_entry),
             Err(e) => {
-                warn!(
-                    "Merge of {:?} was cancelled: {:?}",
-                    segment_ids.to_vec(),
-                    e
-                );
+                warn!("Merge of {:?} was cancelled: {:?}", segment_ids.to_vec(), e);
                 // ... cancel merge
                 if cfg!(test) {
                     panic!("Merge failed.");
@@ -417,7 +395,8 @@ impl SegmentUpdater {
     }
 
     fn consider_merge_options(&self) {
-        let (committed_segments, uncommitted_segments) = self.segment_manager.get_mergeable_segments();
+        let (committed_segments, uncommitted_segments) =
+            self.segment_manager.get_mergeable_segments();
 
         // Committed segments cannot be merged with uncommitted_segments.
         // We therefore consider merges using these two sets of segments independently.
@@ -427,18 +406,14 @@ impl SegmentUpdater {
         let mut merge_candidates: Vec<(Opstamp, Vec<SegmentId>)> = merge_policy
             .compute_merge_candidates(&uncommitted_segments)
             .into_iter()
-            .map(|merge_candidate| {
-                (current_opstamp, merge_candidate.0)
-            })
+            .map(|merge_candidate| (current_opstamp, merge_candidate.0))
             .collect();
 
         let commit_opstamp = self.load_meta().opstamp;
         let committed_merge_candidates = merge_policy
             .compute_merge_candidates(&committed_segments)
             .into_iter()
-            .map(|merge_candidate: MergeCandidate| {
-                (commit_opstamp, merge_candidate.0)
-            });
+            .map(|merge_candidate: MergeCandidate| (commit_opstamp, merge_candidate.0));
         merge_candidates.extend(committed_merge_candidates);
 
         for (opstamp, segment_ids) in merge_candidates {
@@ -465,15 +440,12 @@ impl SegmentUpdater {
                 if delete_operation.opstamp < committed_opstamp {
                     let index = &self.index;
                     let segment = index.segment(after_merge_segment_entry.meta().clone());
-                    if let Err(advance_deletes_err) = advance_deletes(
-                        segment,
-                        &mut after_merge_segment_entry,
-                        committed_opstamp,
-                    ) {
+                    if let Err(advance_deletes_err) =
+                        advance_deletes(segment, &mut after_merge_segment_entry, committed_opstamp)
+                    {
                         error!(
                             "Merge of {:?} was cancelled (advancing deletes failed): {:?}",
-                            segment_ids,
-                            advance_deletes_err
+                            segment_ids, advance_deletes_err
                         );
                         if cfg!(test) {
                             panic!("Merge failed.");

@@ -277,9 +277,7 @@ impl IndexWriter {
     }
 
     /// Detects and removes the files that are not used by the index anymore.
-    pub fn garbage_collect_files(
-        &self,
-    ) -> crate::Result<GarbageCollectionResult> {
+    pub fn garbage_collect_files(&self) -> crate::Result<GarbageCollectionResult> {
         self.segment_updater.garbage_collect_files()
     }
 
@@ -330,10 +328,7 @@ impl IndexWriter {
     /// Merges a given list of segments
     ///
     /// `segment_ids` is required to be non-empty.
-    pub fn merge(
-        &mut self,
-        segment_ids: &[SegmentId],
-    ) -> crate::Result<SegmentMeta> {
+    pub fn merge(&mut self, segment_ids: &[SegmentId]) -> crate::Result<SegmentMeta> {
         let target_opstamp = self.segment_updater.get_opstamp();
         self.segment_updater.merge(target_opstamp, segment_ids)
     }
@@ -355,11 +350,8 @@ impl IndexWriter {
             .take()
             .expect("The IndexWriter does not have any lock. This is a bug, please report.");
 
-        let new_index_writer: IndexWriter = IndexWriter::new(
-            &self.index,
-            self.heap_size,
-            directory_lock,
-        )?;
+        let new_index_writer: IndexWriter =
+            IndexWriter::new(&self.index, self.heap_size, directory_lock)?;
 
         // the current `self` is dropped right away because of this call.
         //
@@ -461,10 +453,11 @@ impl IndexWriter {
     }
 
     fn end_segment(&self) -> crate::Result<()> {
-        let (segment, segment_writer, mut delete_cursor) = match self.segment_and_writer.lock().unwrap().take() {
-            Some(v) => v,
-            None => return Ok(()),
-        };
+        let (segment, segment_writer, mut delete_cursor) =
+            match self.segment_and_writer.lock().unwrap().take() {
+                Some(v) => v,
+                None => return Ok(()),
+            };
 
         let max_doc = segment_writer.max_doc();
 
@@ -501,7 +494,8 @@ impl IndexWriter {
 
             let segment = self.index.new_segment();
             let schema = segment.schema();
-            let segment_writer = SegmentWriter::for_segment(self.heap_size, segment.clone(), &schema)?;
+            let segment_writer =
+                SegmentWriter::for_segment(self.heap_size, segment.clone(), &schema)?;
 
             drop(seg.insert((segment, segment_writer, delete_cursor)));
         }
@@ -901,11 +895,7 @@ mod tests {
         }
         let num_docs_containing = |s: &str| {
             let term_a = Term::from_field_text(text_field, s);
-            index
-                .searcher()
-                .unwrap()
-                .doc_freq(&term_a)
-                .unwrap()
+            index.searcher().unwrap().doc_freq(&term_a).unwrap()
         };
         assert_eq!(num_docs_containing("a"), 0);
         assert_eq!(num_docs_containing("b"), 100);
@@ -970,14 +960,7 @@ mod tests {
 
         // working with an empty index == no documents
         let term_b = Term::from_field_text(text_field, "b");
-        assert_eq!(
-            index
-                .searcher()
-                .unwrap()
-                .doc_freq(&term_b)
-                .unwrap(),
-            0
-        );
+        assert_eq!(index.searcher().unwrap().doc_freq(&term_b).unwrap(), 0);
     }
 
     #[test]
@@ -997,14 +980,7 @@ mod tests {
 
         let term_a = Term::from_field_text(text_field, "a");
         // expect the document with that term to be in the index
-        assert_eq!(
-            index
-                .searcher()
-                .unwrap()
-                .doc_freq(&term_a)
-                .unwrap(),
-            1
-        );
+        assert_eq!(index.searcher().unwrap().doc_freq(&term_a).unwrap(), 1);
     }
 
     #[test]
@@ -1030,14 +1006,7 @@ mod tests {
         // Find original docs in the index
         let term_a = Term::from_field_text(text_field, "a");
         // expect the document with that term to be in the index
-        assert_eq!(
-            index
-                .searcher()
-                .unwrap()
-                .doc_freq(&term_a)
-                .unwrap(),
-            1
-        );
+        assert_eq!(index.searcher().unwrap().doc_freq(&term_a).unwrap(), 1);
     }
 
     #[test]

@@ -187,7 +187,9 @@ mod test {
             let term = Term::from_field_text(country_field, "japon");
 
             let fuzzy_query = FuzzyTermQuery::new_prefix(term, 1);
-            let top_docs = index.searcher().unwrap()
+            let top_docs = index
+                .searcher()
+                .unwrap()
                 .search(&fuzzy_query, &TopDocs::with_limit(2))
                 .unwrap();
             assert_eq!(top_docs.len(), 1, "Expected only 1 document");
@@ -200,7 +202,9 @@ mod test {
             let term = Term::from_field_text(country_field, "123");
 
             let fuzzy_query = FuzzyTermQuery::new_prefix(term, 1);
-            let top_docs = index.searcher().unwrap()
+            let top_docs = index
+                .searcher()
+                .unwrap()
                 .search(&fuzzy_query, &TopDocs::with_limit(2))
                 .unwrap();
             assert_eq!(top_docs.len(), 0, "Expected no document");
@@ -211,7 +215,9 @@ mod test {
             let term = Term::from_field_text(country_field, "jap");
 
             let fuzzy_query = FuzzyTermQuery::new_prefix(term, 1);
-            let top_docs = index.searcher().unwrap()
+            let top_docs = index
+                .searcher()
+                .unwrap()
                 .search(&fuzzy_query, &TopDocs::with_limit(2))
                 .unwrap();
             assert_eq!(top_docs.len(), 1, "Expected only 1 document");

@@ -19,8 +19,8 @@ use crate::schema::FieldType;
 use crate::schema::Schema;
 use crate::tokenizer::{TextAnalyzer, TokenizerManager};
 use crate::IndexWriter;
-use crate::SegmentReader;
 use crate::Searcher;
+use crate::SegmentReader;
 use std::collections::HashSet;
 use std::fmt;
 
@@ -362,10 +362,7 @@ impl Index {
     ///
     /// # Panics
     /// If the heap size per thread is too small, panics.
-    pub fn writer(
-        &self,
-        heap_size_in_bytes: usize,
-    ) -> crate::Result<IndexWriter> {
+    pub fn writer(&self, heap_size_in_bytes: usize) -> crate::Result<IndexWriter> {
         let directory_lock = self
             .directory
             .acquire_lock(&INDEX_WRITER_LOCK)
@@ -381,11 +378,7 @@ impl Index {
                     ),
                 )
             })?;
-        IndexWriter::new(
-            self,
-            heap_size_in_bytes,
-            directory_lock,
-        )
+        IndexWriter::new(self, heap_size_in_bytes, directory_lock)
     }
 
     /// Helper to create an index writer for tests.
@@ -494,11 +487,8 @@ impl fmt::Debug for Index {
 mod tests {
     use crate::schema::Field;
     use crate::schema::{Schema, INDEXED, TEXT};
-    use crate::{
-        directory::RamDirectory,
-        IndexSettings,
-    };
     use crate::Index;
+    use crate::{directory::RamDirectory, IndexSettings};
 
     #[test]
     fn test_indexer_for_field() {

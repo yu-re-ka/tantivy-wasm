@@ -88,7 +88,8 @@ fn main() -> tantivy::Result<()> {
     let frankenstein_isbn = Term::from_field_text(isbn, "978-9176370711");
 
     // Oops our frankenstein doc seems misspelled
-    let frankenstein_doc_misspelled = extract_doc_given_isbn(&index.searcher()?, &frankenstein_isbn)?.unwrap();
+    let frankenstein_doc_misspelled =
+        extract_doc_given_isbn(&index.searcher()?, &frankenstein_isbn)?.unwrap();
     assert_eq!(
         schema.to_json(&frankenstein_doc_misspelled),
         r#"{"isbn":["978-9176370711"],"title":["Frankentein"]}"#,
@@ -128,7 +129,8 @@ fn main() -> tantivy::Result<()> {
     index_writer.commit()?;
 
     // No more typo!
-    let frankenstein_new_doc = extract_doc_given_isbn(&index.searcher()?, &frankenstein_isbn)?.unwrap();
+    let frankenstein_new_doc =
+        extract_doc_given_isbn(&index.searcher()?, &frankenstein_isbn)?.unwrap();
     assert_eq!(
         schema.to_json(&frankenstein_new_doc),
         r#"{"isbn":["978-9176370711"],"title":["Frankenstein"]}"#,

@@ -114,11 +114,13 @@ impl Searcher {
         let scoring_enabled = collector.requires_scoring();
         let weight = query.weight(self, scoring_enabled)?;
         let segment_readers = self.segment_readers();
-        let fruits = segment_readers.iter().enumerate().map(
-            |(segment_ord, segment_reader)| {
+        let fruits = segment_readers
+            .iter()
+            .enumerate()
+            .map(|(segment_ord, segment_reader)| {
                 collector.collect_segment(weight.as_ref(), segment_ord as u32, segment_reader)
-            },
-        ).collect::<crate::Result<_>>()?;
+            })
+            .collect::<crate::Result<_>>()?;
         collector.merge_fruits(fruits)
     }
 

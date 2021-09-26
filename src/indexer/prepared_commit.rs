@@ -31,9 +31,10 @@ impl<'a> PreparedCommit<'a> {
 
     pub fn commit(self) -> crate::Result<Opstamp> {
         info!("committing {}", self.opstamp);
-        let _ = self.index_writer
-                .segment_updater()
-                .commit(self.opstamp, self.payload);
+        let _ = self
+            .index_writer
+            .segment_updater()
+            .commit(self.opstamp, self.payload);
         Ok(self.opstamp)
     }
 }

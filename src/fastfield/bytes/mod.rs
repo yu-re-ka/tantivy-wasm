@@ -35,9 +35,7 @@ mod tests {
         Ok(())
     }
 
-    fn create_index_for_test<T: Into<BytesOptions>>(
-        byte_options: T,
-    ) -> crate::Result<Searcher> {
+    fn create_index_for_test<T: Into<BytesOptions>>(byte_options: T) -> crate::Result<Searcher> {
         let mut schema_builder = Schema::builder();
         let field = schema_builder.add_bytes_field("string_bytes", byte_options.into());
         let schema = schema_builder.build();

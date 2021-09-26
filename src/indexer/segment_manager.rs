@@ -79,12 +79,8 @@ impl SegmentManager {
     pub fn get_mergeable_segments(&self) -> (Vec<SegmentMeta>, Vec<SegmentMeta>) {
         let registers_lock = self.read();
         (
-            registers_lock
-                .committed
-                .get_mergeable_segments(),
-            registers_lock
-                .uncommitted
-                .get_mergeable_segments(),
+            registers_lock.committed.get_mergeable_segments(),
+            registers_lock.uncommitted.get_mergeable_segments(),
         )
     }
     /// Returns all of the segment entries (committed or uncommitted)

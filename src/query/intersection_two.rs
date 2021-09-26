@@ -4,24 +4,19 @@ use DocId;
 use Score;
 use SkipResult;
 
-
 /// Creates a `DocSet` that iterate through the intersection of two `DocSet`s.
 pub struct IntersectionTwoTerms<TDocSet> {
     left: TDocSet,
-    right: TDocSet
+    right: TDocSet,
 }
 
 impl<TDocSet: DocSet> IntersectionTwoTerms<TDocSet> {
     pub fn new(left: TDocSet, right: TDocSet) -> IntersectionTwoTerms<TDocSet> {
-        IntersectionTwoTerms {
-            left,
-            right
-        }
+        IntersectionTwoTerms { left, right }
     }
 }
 
 impl<TDocSet: DocSet> DocSet for IntersectionTwoTerms<TDocSet> {
-
     fn advance(&mut self) -> bool {
         let (left, right) = (&mut self.left, &mut self.right);
         if !left.advance() {
