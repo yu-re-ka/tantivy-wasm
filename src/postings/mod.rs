@@ -574,7 +574,7 @@ mod bench {
         Term::from_field_text(field, "d")
     });
 
-    pub static INDEX: Lazy<Index> = Lazy::new(|| {
+    fn test_index() -> Index {
         let mut schema_builder = Schema::builder();
         let text_field = schema_builder.add_text_field("text", STRING);
         let schema = schema_builder.build();
@@ -602,11 +602,11 @@ mod bench {
             assert!(index_writer.commit().is_ok());
         }
         index
-    });
+    }
 
     #[bench]
     fn bench_segment_postings(b: &mut Bencher) {
-        let searcher = INDEX.searcher().unwrap();
+        let searcher = test_index().searcher().unwrap();
         let segment_reader = searcher.segment_reader(0);
 
         b.iter(|| {
@@ -622,7 +622,7 @@ mod bench {
 
     #[bench]
     fn bench_segment_intersection(b: &mut Bencher) {
-        let searcher = INDEX.searcher().unwrap();
+        let searcher = test_index().searcher().unwrap();
         let segment_reader = searcher.segment_reader(0);
         b.iter(|| {
             let segment_postings_a = segment_reader
@@ -660,7 +660,7 @@ mod bench {
     }
 
     fn bench_skip_next(p: f64, b: &mut Bencher) {
-        let searcher = INDEX.searcher().unwrap();
+        let searcher = test_index().searcher().unwrap();
         let segment_reader = searcher.segment_reader(0);
         let docs = tests::sample(segment_reader.num_docs(), p);
 
@@ -718,7 +718,7 @@ mod bench {
 
     #[bench]
     fn bench_iterate_segment_postings(b: &mut Bencher) {
-        let searcher = INDEX.searcher().unwrap();
+        let searcher = test_index().searcher().unwrap();
         let segment_reader = searcher.segment_reader(0);
         b.iter(|| {
             let n: u32 = test::black_box(17);
