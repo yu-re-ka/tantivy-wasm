@@ -60,7 +60,7 @@ rand = "0.8.3"
 maplit = "1.0.2"
 matches = "0.1.8"
 proptest = "1.0"
-criterion = "0.3.5"
+criterion = "0.4.0"
 test-env-log = "0.2.7"
 env_logger = "0.9.0"
 
